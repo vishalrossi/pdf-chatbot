@@ -4,6 +4,7 @@ from pyspark.dbutils import DBUtils
 from pyspark.sql import SparkSession
 
 spark = SparkSession.builder.getOrCreate()
+dbutils = DBUtils(spark)
 
 CATALOG = "databricks_vishal"   # MUST exist
 SCHEMA = "chatbot"
@@ -20,12 +21,12 @@ DIRS = [
     "temp"
 ]
 
-for d in DIRS:
-    spark._jvm.com.databricks.dbutils_v1.DBUtilsHolder.dbutils.fs.mkdirs(
-        f"{BASE_VOLUME_PATH}/{d}"
-    )
-
-print("Unity Catalog storage initialized")
+# Function to create storage folders
+def ensure_storage():
+    for d in DIRS:
+        path = f"{BASE_VOLUME_PATH}/{d}"
+        dbutils.fs.mkdirs(path)
+    print(" Unity Catalog folders created successfully")
 
 
 if __name__ == "__main__":
