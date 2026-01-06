@@ -1,0 +1,37 @@
+bundle:
+  name: pdf-chatbot
+
+workspace:
+  root_path: /vishal/chatbot
+
+targets:
+  dev:
+    default: true
+    # workspace.host removed; use DATABRICKS_HOST env var
+
+  prod:
+    # workspace.host removed; use DATABRICKS_HOST env var
+
+resources:
+  jobs:
+    pdf_ingestion:
+      name: vishal-pdf-ingestion-${bundle.target}
+      tasks:
+        - task_key: ingest
+          new_cluster:
+            spark_version: 14.3.x-scala2.12
+            node_type_id: Standard_DS3_v2
+            num_workers: 1
+          spark_python_task:
+            python_file: src/ingest_pdf.py
+
+    storage_init:
+      name: vishal-storage-init-${bundle.target}
+      tasks:
+        - task_key: init_storage
+          new_cluster:
+            spark_version: 14.3.x-scala2.12
+            node_type_id: Standard_DS3_v2
+            num_workers: 1
+          spark_python_task:
+            python_file: src/utils/storage.py
