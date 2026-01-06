@@ -2,7 +2,7 @@ bundle:
   name: pdf-chatbot
 
 workspace:
-  root_path: /vishal/chatbot
+  root_path: /vishal/pdf-chatbot
 
 targets:
   dev:
