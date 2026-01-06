@@ -12,7 +12,8 @@ def get_dbutils(spark):
 
 dbutils = get_dbutils(spark)
 
-BASE_VOLUME_PATH = "/Volumes/vishal/chatbot/rag_data"
+#BASE_VOLUME_PATH = "/Volumes/vishal/chatbot/rag_data"
+BASE_VOLUME_PATH = "/Volumes/databricks_vishal"
 
 REQUIRED_DIRS = [
     "pdfs",
