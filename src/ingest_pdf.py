@@ -52,18 +52,13 @@ vsc = VectorSearchClient()
 index_name = f"pdf_chatbot_{ENV}"
 
 def index_exists(vsc, index_name):
-    indexes = vsc.list_indexes()  # NO endpoint_name!
-    return any(i["name"] == index_name for i in indexes)
+    try:
+        vsc.list_indexes(name=index_name)
+        return True
+    except Exception:
+        return False
 
 if not index_exists(vsc, index_name):
-    vsc.create_index(
-        endpoint_name="pdf-vector-search",
-        index_name=index_name,
-        dimension=len(embeddings[0]),
-        metric_type="COSINE"
-    )
-
-if not index_exists(vsc, "pdf-vector-search", index_name):
     vsc.create_index(
         endpoint_name="pdf-vector-search",
         index_name=index_name,
