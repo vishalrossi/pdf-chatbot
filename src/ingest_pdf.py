@@ -1,7 +1,8 @@
 import os
 from langchain_community.document_loaders import PyPDFLoader
+from langchain_text_splitter import RecursiveCharacterTextSplitter
 #from langchain.document_loaders import PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+#from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.embeddings import OpenAIEmbeddings
 from databricks.vector_search.client import VectorSearchClient
 from utils.storage import ensure_storage, BASE_VOLUME_PATH
@@ -16,7 +17,9 @@ VECTOR_PATH = f"{BASE_VOLUME_PATH}/vector_search/{ENV}"
 loader = PyPDFLoader(PDF_PATH)
 docs = loader.load()
 
-splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+splitter = RecursiveCharacterTextSplitter(chunk_size=500, 
+                                          chunk_overlap=50, 
+                                          separators=["\n\n", "\n", ".", " "])
 chunks = splitter.split_documents(docs)
 
 texts = [c.page_content for c in chunks]

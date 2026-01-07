@@ -18,6 +18,8 @@ x-libraries: &common-libs
   - pypi:
       package: langchain-community
   - pypi:
+      package: langchain-text-splitters
+  - pypi:
       package: openai
   - pypi:
       package: databricks-vectorsearch
