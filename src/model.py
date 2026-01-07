@@ -13,7 +13,7 @@ class EpChatbot(mlflow.pyfunc.PythonModel):
 if "--register" in sys.argv:
     env = sys.argv[sys.argv.index("--env") + 1]
 
-    mlflow.set_experiment(f"/epassi-task/epassi/{env}")
+    mlflow.set_experiment(f"/chatbot-task/pdf/{env}")
 
     with mlflow.start_run():
         mlflow.pyfunc.log_model(

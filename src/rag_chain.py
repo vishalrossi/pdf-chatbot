@@ -5,8 +5,8 @@ from databricks.vector_search.client import VectorSearchClient
 def load_chain(env):
     vsc = VectorSearchClient()
     index = vsc.get_index(
-        endpoint_name="epassi-vector-search",
-        index_name=f"epassi_chatbot_{env}"
+        endpoint_name="pdf-vector-search",
+        index_name=f"pdf_chatbot_{env}"
     )
 
     retriever = index.as_langchain_retriever(k=3)

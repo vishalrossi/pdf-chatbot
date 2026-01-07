@@ -37,6 +37,8 @@ x-libraries: &common-libs
       package: python-dotenv
   - pypi:
       package: openai
+  - pypi:
+      package: langchain-ollama
 
 
 resources:
