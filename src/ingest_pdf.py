@@ -35,6 +35,7 @@ print(f"Total Splits after chunking: {len(chunks)}")
 texts = [c.page_content for c in chunks]
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small", api_key=api_key).embed_documents(texts)
 
+'''
 vsc = VectorSearchClient()
 index_name = f"pdf_chatbot_{ENV}"
 
@@ -44,4 +45,35 @@ vsc.create_delta_sync_index(
     source_table_name=None,
     embeddings=embeddings,
     texts=texts
+)
+'''
+
+vsc = VectorSearchClient()
+index_name = f"pdf_chatbot_{ENV}"
+
+if not vsc.index_exists("pdf-vector-search", index_name):
+    vsc.create_index(
+        endpoint_name="pdf-vector-search",
+        index_name=index_name,
+        dimension=len(embeddings[0]),
+        metric_type="COSINE"
+    )
+
+ids = [f"pdf_{c.metadata.get('page')}_{i}" for i, c in enumerate(chunks)]
+
+metadata = [
+    {
+        "text": c.page_content,
+        "source": "pdf",
+        "page": c.metadata.get("page"),
+        "chunk_id": i
+    }
+    for i, c in enumerate(chunks)
+]
+
+vsc.upsert(
+    index_name=index_name,
+    vectors=embeddings,
+    ids=ids,
+    metadata=metadata
 )
