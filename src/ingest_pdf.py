@@ -4,12 +4,14 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from databricks.vector_search.client import VectorSearchClient
 from utils.storage import BASE_VOLUME_PATH
-from dotenv import load_dotenv
+from dotenv import load_dotenv, dotenv_values
 
 #load_dotenv()
-load_dotenv(dotenv_path="/Users/vishalsinha/Documents/GitHub/pdf-chatbot/.env")
+load_dotenv(dotenv_path="/Users/vishalsinha/Documents/GitHub/pdf-chatbot/.env", override=True)
 api_key=os.getenv('OPENAI_API_KEY')
 print("api key is", api_key)
+config = dotenv_values(".env")
+print("Config is", config)
 ENV = os.getenv("DATABRICKS_BUNDLE_TARGET", "dev")
 print("env is", ENV)
 

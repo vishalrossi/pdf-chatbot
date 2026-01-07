@@ -35,6 +35,8 @@ x-libraries: &common-libs
       package: pyyaml
   - pypi:
       package: python-dotenv
+  - pypi:
+      package: openai
 
 
 resources:
