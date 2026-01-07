@@ -10,7 +10,7 @@ ENV_PATH = "/Workspace/vishal/pdf-chatbot/.env"
 
 load_dotenv(dotenv_path=ENV_PATH, override=True)
 
-api_key=os.getenv('AZURE_API_KEY')
+api_key=os.getenv('OPENAI_API_KEY')
 
 ENV = os.getenv("DATABRICKS_BUNDLE_TARGET", "dev")
 print("env is", ENV)
