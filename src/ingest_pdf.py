@@ -4,7 +4,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from databricks.vector_search.client import VectorSearchClient
 from utils.storage import BASE_VOLUME_PATH
-from dotenv import load_dotenv, dotenv_values
+from dotenv import load_dotenv
 
 load_dotenv()
 api_key=os.getenv('OPENAI_API_KEY')
