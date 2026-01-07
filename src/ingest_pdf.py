@@ -57,7 +57,11 @@ embeddings = OpenAIEmbeddings(model="text-embedding-3-small", api_key=api_key).e
 
 client = VectorSearchClient()
 ENDPOINT_NAME=f"pdf_chatbot_endpoint_{ENV}"
-INDEX_NAME = f"pdf_chatbot_{ENV}"
+CATALOG = "main"          # or your UC catalog
+SCHEMA = "vector_search" # or any schema you use
+
+INDEX_NAME = f"{CATALOG}.{SCHEMA}.pdf_chatbot_{ENV}"
+#INDEX_NAME = f"pdf_chatbot_{ENV}"
 
 
 # Check if endpoint exists
@@ -72,12 +76,6 @@ else:
     )
     print(f"Vector Search endpoint '{ENDPOINT_NAME}' created.")
 
-'''
-client.create_endpoint(
-    name=ENDPOINT_NAME,
-    endpoint_type="STANDARD" 
-)
-'''
 
 spark = SparkSession.builder.getOrCreate()
 
