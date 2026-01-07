@@ -7,10 +7,14 @@ from utils.storage import BASE_VOLUME_PATH
 from dotenv import load_dotenv, dotenv_values
 
 #load_dotenv()
-load_dotenv(dotenv_path="/Users/vishalsinha/Documents/GitHub/pdf-chatbot/.env", override=True)
+ENV_PATH = "/Users/vishalsinha/Documents/GitHub/pdf-chatbot/.env"
+
+load_dotenv(dotenv_path=ENV_PATH, override=True)
+
+#load_dotenv(dotenv_path="/Users/vishalsinha/Documents/GitHub/pdf-chatbot/.env", override=True)
 api_key=os.getenv('OPENAI_API_KEY')
 print("api key is", api_key)
-config = dotenv_values(".env")
+config = dotenv_values(ENV_PATH)
 print("Config is", config)
 ENV = os.getenv("DATABRICKS_BUNDLE_TARGET", "dev")
 print("env is", ENV)
