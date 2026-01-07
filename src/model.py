@@ -98,6 +98,7 @@ class PDFRAGModel:
     # -----------------------------
     # 5️⃣ Register model in Databricks
     # -----------------------------
+        
     def register_model(self, model_name):
         """
         Register this PDF RAG model in Databricks Model Registry using MLflow
@@ -108,16 +109,17 @@ class PDFRAGModel:
                 self.pdf_rag = self
 
             def predict(self, context, model_input):
-                # model_input should contain: {"query_embedding": [...], "question": "..."}
                 return self.pdf_rag.ask_pdf(
                     query_embedding=model_input["query_embedding"],
                     question=model_input["question"]
                 )
 
-        pyfunc_model_path = f"/tmp/{model_name}_pyfunc"
+        # Artifact path must be a simple string (no slashes, periods, etc.)
+        artifact_path = f"{model_name}_pyfunc"
+
         mlflow.pyfunc.log_model(
             python_model=PDFRAGWrapper(),
-            artifact_path=pyfunc_model_path,
+            artifact_path=artifact_path,
             registered_model_name=model_name
         )
         print(f"Model registered as '{model_name}' in Databricks Model Registry")
