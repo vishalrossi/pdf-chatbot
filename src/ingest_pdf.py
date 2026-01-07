@@ -19,7 +19,6 @@ load_dotenv(dotenv_path=ENV_PATH, override=True)
 api_key=os.getenv('OPENAI_API_KEY')
 
 ENV = os.getenv("DATABRICKS_BUNDLE_TARGET", "dev")
-print("env is", ENV)
 
 PDF_PATH = f"{BASE_VOLUME_PATH}/pdf/About_Dogs.pdf"
 VECTOR_PATH = f"{BASE_VOLUME_PATH}/vector_search/{ENV}"
@@ -57,8 +56,8 @@ embeddings = OpenAIEmbeddings(model="text-embedding-3-small", api_key=api_key).e
 
 client = VectorSearchClient()
 ENDPOINT_NAME=f"pdf_chatbot_endpoint_{ENV}"
-CATALOG = "main"          # or your UC catalog
-SCHEMA = "vector_search" # or any schema you use
+CATALOG = "databricks_vishal"          # or your UC catalog
+SCHEMA = "default" # or any schema you use
 
 INDEX_NAME = f"{CATALOG}.{SCHEMA}.pdf_chatbot_{ENV}"
 #INDEX_NAME = f"pdf_chatbot_{ENV}"
