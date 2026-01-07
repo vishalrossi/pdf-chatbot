@@ -6,10 +6,10 @@ from databricks.vector_search.client import VectorSearchClient
 from utils.storage import BASE_VOLUME_PATH
 from dotenv import load_dotenv
 
-load_dotenv()
-#api_key=os.getenv('OPENAI_API_KEY')
-#print("api key is", api_key)
-OPENAI_API_KEY="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"
+#load_dotenv()
+load_dotenv(dotenv_path="/Users/vishalsinha/Documents/GitHub/pdf-chatbot/.env")
+api_key=os.getenv('OPENAI_API_KEY')
+print("api key is", api_key)
 ENV = os.getenv("DATABRICKS_BUNDLE_TARGET", "dev")
 print("env is", ENV)
 
@@ -27,7 +27,7 @@ splitter = RecursiveCharacterTextSplitter(chunk_size=500,
 chunks = splitter.split_documents(docs)
 
 print(f"INFO - Total Splits: {len(chunks)}")
-
+'''
 texts = [c.page_content for c in chunks]
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small", api_key=OPENAI_API_KEY).embed_documents(texts)
 
@@ -41,3 +41,4 @@ vsc.create_delta_sync_index(
     embeddings=embeddings,
     texts=texts
 )
+'''
