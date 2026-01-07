@@ -6,20 +6,12 @@ from databricks.vector_search.client import VectorSearchClient
 from utils.storage import BASE_VOLUME_PATH
 from dotenv import load_dotenv, dotenv_values
 
-#load_dotenv()
-#ENV_PATH = "/Users/vishalsinha/Documents/GitHub/pdf-chatbot/.env"
 ENV_PATH = "/Workspace/vishal/pdf-chatbot/.env"
-print("Exists:", os.path.exists(ENV_PATH))
-print("Readable:", os.access(ENV_PATH, os.R_OK))
-print("CWD:", os.getcwd())
 
 load_dotenv(dotenv_path=ENV_PATH, override=True)
 
-#load_dotenv(dotenv_path="/Users/vishalsinha/Documents/GitHub/pdf-chatbot/.env", override=True)
 api_key=os.getenv('OPENAI_API_KEY')
-print("api key is", api_key)
-config = dotenv_values(ENV_PATH)
-print("Config is", config)
+
 ENV = os.getenv("DATABRICKS_BUNDLE_TARGET", "dev")
 print("env is", ENV)
 
@@ -34,12 +26,14 @@ print(f"Loaded {len(docs)} page(s) from the PDF.")
 splitter = RecursiveCharacterTextSplitter(chunk_size=500, 
                                           chunk_overlap=50, 
                                           separators=["\n\n", "\n", ".", " "])
-chunks = splitter.split_documents(docs)
 
-print(f"INFO - Total Splits: {len(chunks)}")
-'''
+relevant_pages = docs[132:140]
+chunks = splitter.split_documents(relevant_pages)
+
+print(f"Total Splits after chunking: {len(chunks)}")
+
 texts = [c.page_content for c in chunks]
-embeddings = OpenAIEmbeddings(model="text-embedding-3-small", api_key=OPENAI_API_KEY).embed_documents(texts)
+embeddings = OpenAIEmbeddings(model="text-embedding-3-small", api_key=api_key).embed_documents(texts)
 
 vsc = VectorSearchClient()
 index_name = f"pdf_chatbot_{ENV}"
@@ -51,4 +45,3 @@ vsc.create_delta_sync_index(
     embeddings=embeddings,
     texts=texts
 )
-'''
