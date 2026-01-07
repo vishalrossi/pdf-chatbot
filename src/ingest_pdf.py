@@ -7,7 +7,7 @@ from utils.storage import BASE_VOLUME_PATH
 from dotenv import load_dotenv
 
 load_dotenv('.env', override=True)
-os.getenv('OPENAI_API_KEY')
+api_key=os.getenv('OPENAI_API_KEY')
 
 ENV = os.getenv("DATABRICKS_BUNDLE_TARGET", "dev")
 print("env is", ENV)
@@ -28,7 +28,7 @@ chunks = splitter.split_documents(docs)
 print(f"INFO - Total Splits: {len(chunks)}")
 
 texts = [c.page_content for c in chunks]
-embeddings = OpenAIEmbeddings(model="text-embedding-3-small").embed_documents(texts)
+embeddings = OpenAIEmbeddings(model="text-embedding-3-small", api_key=api_key).embed_documents(texts)
 
 vsc = VectorSearchClient()
 index_name = f"pdf_chatbot_{ENV}"
