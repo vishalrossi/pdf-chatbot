@@ -4,11 +4,11 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from databricks.vector_search.client import VectorSearchClient
 from utils.storage import BASE_VOLUME_PATH
-from dotenv import load_dotenv
+from dotenv import load_dotenv, dotenv_values
 
-load_dotenv('.env', override=True)
+load_dotenv()
 api_key=os.getenv('OPENAI_API_KEY')
-
+print("api key is", api_key)
 ENV = os.getenv("DATABRICKS_BUNDLE_TARGET", "dev")
 print("env is", ENV)
 
