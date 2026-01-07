@@ -51,7 +51,11 @@ vsc.create_delta_sync_index(
 vsc = VectorSearchClient()
 index_name = f"pdf_chatbot_{ENV}"
 
-if not vsc.index_exists("pdf-vector-search", index_name):
+def index_exists(vsc, endpoint_name, index_name):
+    indexes = vsc.list_indexes(endpoint_name=endpoint_name)
+    return any(i["name"] == index_name for i in indexes)
+
+if not index_exists(vsc, "pdf-vector-search", index_name):
     vsc.create_index(
         endpoint_name="pdf-vector-search",
         index_name=index_name,
