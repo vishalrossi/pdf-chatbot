@@ -89,13 +89,15 @@ print(df.head)
 spark_df = spark.createDataFrame(df)
 
 TABLE_NAME = f"pdf_chatbot_embeddings_{ENV}"
+SOURCE_TABLE_NAME = f"{CATALOG}.{SCHEMA}.pdf_chatbot_embeddings_{ENV}"
+
 
 spark_df.write.format("delta").mode("overwrite").saveAsTable(TABLE_NAME)
 
 client.create_delta_sync_index(
     endpoint_name=ENDPOINT_NAME,
     index_name=INDEX_NAME,
-    source_table_name=TABLE_NAME,
+    source_table_name=SOURCE_TABLE_NAME,
     pipeline_type="TRIGGERED",
     primary_key="id",
     embedding_dimension=len(embeddings[0]),  # 1536 for text-embedding-3-small
