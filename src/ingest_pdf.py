@@ -2,11 +2,12 @@ import os
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
-#from langchain.document_loaders import PyPDFLoader
-#from langchain.text_splitter import RecursiveCharacterTextSplitter
-#from langchain.embeddings import OpenAIEmbeddings
 from databricks.vector_search.client import VectorSearchClient
 from utils.storage import BASE_VOLUME_PATH
+from dotenv import load_dotenv
+
+load_dotenv('.env', override=True)
+os.getenv('OPENAI_API_KEY')
 
 ENV = os.getenv("DATABRICKS_BUNDLE_TARGET", "dev")
 print("env is", ENV)
@@ -27,7 +28,7 @@ chunks = splitter.split_documents(docs)
 print(f"INFO - Total Splits: {len(chunks)}")
 
 texts = [c.page_content for c in chunks]
-embeddings = OpenAIEmbeddings().embed_documents(texts)
+embeddings = OpenAIEmbeddings(model="text-embedding-3-small").embed_documents(texts)
 
 vsc = VectorSearchClient()
 index_name = f"pdf_chatbot_{ENV}"
