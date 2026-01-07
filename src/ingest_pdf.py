@@ -12,7 +12,7 @@ from utils.storage import BASE_VOLUME_PATH
 ENV = os.getenv("DATABRICKS_BUNDLE_TARGET", "dev")
 print("env is", ENV)
 
-PDF_PATH = f"{BASE_VOLUME_PATH}/pdfs/About_Dogs.pdf"
+PDF_PATH = f"{BASE_VOLUME_PATH}/pdf/About_Dogs.pdf"
 VECTOR_PATH = f"{BASE_VOLUME_PATH}/vector_search/{ENV}"
 
 loader = PyPDFLoader(PDF_PATH)

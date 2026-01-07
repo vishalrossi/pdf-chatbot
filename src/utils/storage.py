@@ -14,7 +14,7 @@ VOLUME = "rag_data"
 BASE_VOLUME_PATH = f"/Volumes/{CATALOG}/{SCHEMA}/{VOLUME}"
 
 DIRS = [
-    "pdfs",
+    "pdf",
     "vector_search/dev",
     "logs",
     "temp"
