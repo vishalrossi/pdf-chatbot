@@ -8,7 +8,6 @@ from langchain_openai import OpenAIEmbeddings
 from databricks.vector_search.client import VectorSearchClient
 from utils.storage import BASE_VOLUME_PATH
 
-#ENV = os.environ["ENV"]
 ENV = os.getenv("DATABRICKS_BUNDLE_TARGET", "dev")
 print("env is", ENV)
 
@@ -18,10 +17,14 @@ VECTOR_PATH = f"{BASE_VOLUME_PATH}/vector_search/{ENV}"
 loader = PyPDFLoader(PDF_PATH)
 docs = loader.load()
 
+print(f"Loaded {len(docs)} page(s) from the PDF.")
+
 splitter = RecursiveCharacterTextSplitter(chunk_size=500, 
                                           chunk_overlap=50, 
                                           separators=["\n\n", "\n", ".", " "])
 chunks = splitter.split_documents(docs)
+
+print(f"INFO - Total Splits: {len(chunks)}")
 
 texts = [c.page_content for c in chunks]
 embeddings = OpenAIEmbeddings().embed_documents(texts)

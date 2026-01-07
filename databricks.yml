@@ -33,6 +33,8 @@ x-libraries: &common-libs
       package: python-dotenv
   - pypi:
       package: pyyaml
+  - pypi:
+      package: python-dotenv
 
 
 resources:
