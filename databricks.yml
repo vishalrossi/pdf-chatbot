@@ -18,7 +18,7 @@ x-libraries: &common-libs
   - pypi:
       package: langchain-community
   - pypi:
-      package: open-ai
+      package: openai
   - pypi:
       package: databricks-vectorsearch
   - pypi:
@@ -26,7 +26,12 @@ x-libraries: &common-libs
   - pypi:
       package: mlflow
   - pypi:
-      package: ragas
+      package: databricks-cli
+  - pypi:
+      package: python-dotenv
+  - pypi:
+      package: pyyaml
+
 
 resources:
   jobs:
