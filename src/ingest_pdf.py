@@ -4,7 +4,9 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from databricks.vector_search.client import VectorSearchClient
 from utils.storage import BASE_VOLUME_PATH
-from dotenv import load_dotenv, dotenv_values
+from dotenv import load_dotenv
+import pandas as pd
+from pyspark.sql import SparkSession
 
 
 # -----------------------------
@@ -57,10 +59,41 @@ client = VectorSearchClient()
 ENDPOINT_NAME=f"pdf_chatbot_endpoint_{ENV}"
 INDEX_NAME = f"pdf_chatbot_{ENV}"
 
+
+# Check if endpoint exists
+endpoints = [e["name"] for e in client.list_endpoints().get("endpoints", [])]
+
+if ENDPOINT_NAME in endpoints:
+    print(f"Vector Search endpoint '{ENDPOINT_NAME}' already exists. Skipping creation.")
+else:
+    client.create_endpoint(
+        name=ENDPOINT_NAME,
+        endpoint_type="STANDARD"
+    )
+    print(f"Vector Search endpoint '{ENDPOINT_NAME}' created.")
+
+'''
 client.create_endpoint(
     name=ENDPOINT_NAME,
     endpoint_type="STANDARD" 
 )
+'''
+
+spark = SparkSession.builder.getOrCreate()
+
+df = pd.DataFrame({
+    "id": range(len(texts)),
+    "text": texts,
+    "embedding": embeddings
+})
+
+print(df.head)
+
+spark_df = spark.createDataFrame(df)
+
+TABLE_NAME = f"pdf_chatbot_embeddings_{ENV}"
+
+spark_df.write.format("delta").mode("overwrite").saveAsTable(TABLE_NAME)
 
 '''
 index = client.create_delta_sync_index(

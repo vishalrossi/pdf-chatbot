@@ -38,7 +38,7 @@ x-libraries: &common-libs
   - pypi:
       package: openai
   - pypi:
-      package: langchain-ollama
+      package: pyspark
 
 
 resources:
