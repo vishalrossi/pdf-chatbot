@@ -20,7 +20,7 @@ x-libraries: &common-libs
   - pypi:
       package: langchain-text-splitters
   - pypi:
-      package: openai
+      package: langchain-openai
   - pypi:
       package: databricks-vectorsearch
   - pypi:

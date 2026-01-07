@@ -1,15 +1,15 @@
 import os
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_openai import OpenAIEmbeddings
 #from langchain.document_loaders import PyPDFLoader
 #from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.embeddings import OpenAIEmbeddings
+#from langchain.embeddings import OpenAIEmbeddings
 from databricks.vector_search.client import VectorSearchClient
-from utils.storage import ensure_storage, BASE_VOLUME_PATH
+from utils.storage import BASE_VOLUME_PATH
 
 ENV = os.environ["ENV"]
-
-#ensure_storage()
+print("env is", ENV)
 
 PDF_PATH = f"{BASE_VOLUME_PATH}/pdfs/About_Dogs.pdf"
 VECTOR_PATH = f"{BASE_VOLUME_PATH}/vector_search/{ENV}"
