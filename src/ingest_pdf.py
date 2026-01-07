@@ -3,7 +3,6 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from databricks.vector_search.client import VectorSearchClient
-from databricks.vector_search.models import VectorIndexType
 from utils.storage import BASE_VOLUME_PATH
 from dotenv import load_dotenv, dotenv_values
 
@@ -49,89 +48,28 @@ texts = [c.page_content for c in chunks]
 
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small", api_key=api_key).embed_documents(texts)
 
-'''
-vsc = VectorSearchClient()
-index_name = f"pdf_chatbot_{ENV}"
-
-vsc.create_delta_sync_index(
-    endpoint_name="pdf-vector-search",
-    index_name=index_name,
-    source_table_name=None,
-    embeddings=embeddings,
-    texts=texts
-)
-'''
 
 # -----------------------------
 # 3️⃣ Initialize Vector Search
 # -----------------------------
 
-vsc = VectorSearchClient()
+client = VectorSearchClient()
+ENDPOINT_NAME=f"pdf_chatbot_endpoint_{ENV}"
 INDEX_NAME = f"pdf_chatbot_{ENV}"
 
-try:
-    # Try to get existing index
-    index = vsc.get_index(INDEX_NAME)
-    print(f"Connected to existing index: {INDEX_NAME}")
-except Exception:
-    # Create a new index if it doesn't exist
-    index = vsc.create_index(
-        name=INDEX_NAME,
-        index_type=VectorIndexType.DENSE_VECTOR,
-        dimension=1536,  # OpenAI text-embedding-ada-002 dimension
-        metric="cosine"
-    )
-    print(f"Created new index: {INDEX_NAME}")
-
-try:
-    index.upsert(vectors=embeddings)
-    print(f"Inserted {len(embeddings)} embeddings into {INDEX_NAME}")
-except Exception as e:
-    print(f"Error inserting embeddings: {e}")
+client.create_endpoint(
+    name=ENDPOINT_NAME,
+    endpoint_type="STANDARD" 
+)
 
 '''
-index_name = f"pdf_chatbot_{ENV}"
-
-def index_exists(vsc, index_name):
-    try:
-        vsc.list_indexes(name=index_name)
-        return True
-    except Exception:
-        return False
-
-if not index_exists(vsc, index_name):
-    vsc.create_index(
-        endpoint_name="pdf-vector-search",
-        index_name=index_name,
-        dimension=len(embeddings[0]),
-        metric_type="COSINE"
-    )
-'''
-# -----------------------------
-# 4️⃣ Prepare Metadata & IDs
-# -----------------------------
-
-ids = [f"pdf_{c.metadata.get('page')}_{i}" for i, c in enumerate(chunks)]
-
-metadata = [
-    {
-        "text": c.page_content,
-        "source": "pdf",
-        "page": c.metadata.get("page"),
-        "chunk_id": i
-    }
-    for i, c in enumerate(chunks)
-]
-
-
-# -----------------------------
-# 5️⃣ Upsert to Vector Index
-# -----------------------------
-'''
-vsc.upsert(
-    index_name=index_name,
-    vectors=embeddings,
-    ids=ids,
-    metadata=metadata
+index = client.create_delta_sync_index(
+  endpoint_name="ENDPOINT_NAME",
+  source_table_name="vector_search_demo.vector_search.en_wiki",
+  index_name="vector_search_demo.vector_search.en_wiki_index",
+  pipeline_type="TRIGGERED",
+  primary_key="id",
+  embedding_dimension=1024,
+  embedding_vector_column="text_vector"
 )
 '''
