@@ -16,7 +16,6 @@ BASE_VOLUME_PATH = f"/Volumes/{CATALOG}/{SCHEMA}/{VOLUME}"
 DIRS = [
     "pdfs",
     "vector_search/dev",
-    "vector_search/prod",
     "logs",
     "temp"
 ]
