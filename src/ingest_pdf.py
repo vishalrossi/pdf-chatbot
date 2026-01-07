@@ -7,7 +7,8 @@ from utils.storage import BASE_VOLUME_PATH
 from dotenv import load_dotenv, dotenv_values
 
 #load_dotenv()
-ENV_PATH = "/Users/vishalsinha/Documents/GitHub/pdf-chatbot/.env"
+#ENV_PATH = "/Users/vishalsinha/Documents/GitHub/pdf-chatbot/.env"
+ENV_PATH = "/Workspace/vishal/pdf-chatbot/.env"
 print("Exists:", os.path.exists(ENV_PATH))
 print("Readable:", os.access(ENV_PATH, os.R_OK))
 print("CWD:", os.getcwd())
