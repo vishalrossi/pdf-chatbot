@@ -90,4 +90,4 @@ resources:
             num_workers: 1
           libraries: *common-libs
           spark_python_task:
-            python_file: src/chat_pdf.py
+            python_file: src/chat_pdf_streamlit.py
