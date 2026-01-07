@@ -60,7 +60,6 @@ CATALOG = "databricks_vishal"          # or your UC catalog
 SCHEMA = "default" # or any schema you use
 
 INDEX_NAME = f"{CATALOG}.{SCHEMA}.pdf_chatbot_{ENV}"
-#INDEX_NAME = f"pdf_chatbot_{ENV}"
 
 
 # Check if endpoint exists
@@ -90,7 +89,6 @@ spark_df = spark.createDataFrame(df)
 
 TABLE_NAME = f"pdf_chatbot_embeddings_{ENV}"
 SOURCE_TABLE_NAME = f"{CATALOG}.{SCHEMA}.pdf_chatbot_embeddings_{ENV}"
-
 
 spark_df.write.format("delta").mode("overwrite").saveAsTable(TABLE_NAME)
 

@@ -39,6 +39,8 @@ x-libraries: &common-libs
       package: openai
   - pypi:
       package: pyspark
+  - pypi:
+      package: streamlit
 
 
 resources:
@@ -65,3 +67,27 @@ resources:
             num_workers: 1
           spark_python_task:
             python_file: src/utils/storage.py
+
+    register_model:
+      name: pdf-register-model-${bundle.target}
+      tasks:
+        - task_key: register_rag_model
+          new_cluster:
+            spark_version: 14.3.x-scala2.12
+            node_type_id: Standard_DS3_v2
+            num_workers: 1
+          libraries: *common-libs
+          spark_python_task:
+            python_file: src/register_model.py
+
+    pdf_chat:
+      name: vishal-pdf-chat-${bundle.target}
+      tasks:
+        - task_key: run_pdf_chat
+          new_cluster:
+            spark_version: 14.3.x-scala2.12
+            node_type_id: Standard_DS3_v2
+            num_workers: 1
+          libraries: *common-libs
+          spark_python_task:
+            python_file: src/chat_pdf.py
