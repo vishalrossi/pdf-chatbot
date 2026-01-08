@@ -55,31 +55,6 @@ pdf_model = PDFRAGModel(
 # Initialize embeddings (once)
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
-'''
-st.title("PDF Chatbot (RAG)")
-
-# User input
-question = st.text_input("Ask a question about your PDF:")
-
-if st.button("Get Answer") and question:
-    with st.spinner("Retrieving answer..."):
-        # Compute query embedding
-        query_embedding = OpenAIEmbeddings(
-            model=EMBEDDING_MODEL,
-            api_key=API_KEY
-        ).embed_query(question)
-
-        # Ask PDF via Vector Search + LLM
-        result = pdf_model.ask_pdf(query_embedding, question)
-
-        # Display
-        st.subheader("Answer")
-        st.write(result["answer"])
-
-        st.subheader("Citations")
-        st.json(result["citations"])
-'''
-
 st.set_page_config(page_title="PDF Chatbot", layout="wide")
 st.title("📄 PDF Chatbot")
 
@@ -91,7 +66,12 @@ user_question = st.text_input(
 if user_question:
     with st.spinner("Searching PDF and generating answer..."):
         query_embedding = embeddings.embed_query(user_question)
-        answer = pdf_model.ask_pdf(query_embedding, user_question)
+        result = pdf_model.ask_pdf(query_embedding, user_question)
 
-    st.markdown("### ✅ Answer")
-    st.write(answer)
+    st.markdown("### 🤖 Answer")
+    st.write(result["answer"])
+
+    with st.expander("📎 Sources"):
+        for c in result["citations"]:
+            st.write(f"**Chunk {c['id']}**")
+            st.text(c["score"])

@@ -17,16 +17,6 @@ class PDFRAGModel:
     - Calls OpenAI LLM for chat
     - Optional: register model in Databricks Model Registry
     """
-    '''
-    def __init__(self, index_name, endpoint_name, api_key, model_name="gpt-4o-mini"):
-        self.index_name = index_name
-        self.endpoint_name = endpoint_name
-        self.model_name = model_name
-        self.api_key = api_key
-
-        self.vsc = VectorSearchClient()
-        self.client = OpenAI(api_key=api_key)
-    '''
         
     def __init__(self, index_name, endpoint_name, model_name= "gpt-4o-mini"):
         if not os.getenv("OPENAI_API_KEY"):
@@ -59,7 +49,7 @@ class PDFRAGModel:
         """
         response = self.index.similarity_search(
             query_vector=query_embedding,
-            columns=["text", "source"],
+            columns=["text"],
             num_results=k,
         )
         return response["result"]["data_array"]
@@ -75,14 +65,12 @@ class PDFRAGModel:
         for i, row in enumerate(results, start=1):
             score = row[0]
             text = row[1]
-            source = row[2] if len(row) > 2 else "pdf"
 
             contexts.append(f"[{i}] {text}")
             citations.append(
                 {
                     "id": i,
                     "score": score,
-                    "source": source,
                 }
             )
 
@@ -94,22 +82,30 @@ class PDFRAGModel:
     @staticmethod
     def build_prompt(context, question):
         return f"""
-                You are a PDF-based assistant.
+            You are a PDF-based assistant.
 
-                Answer the question using only the context below.
-                If the answer is not explicitly stated, say:
-                "I could not find this information in the provided document."
+            Answer the question using ONLY the context below.
 
-                Always include citations like: (Page X).
+            The context may contain:
+            - Lists
+            - Tables
+            - Headings (for example, country names)
+
+            If the answer is present in a list under a relevant heading, extract and summarize it as a sentence.
+            For example: "Dog breeds from Finland are: Finnish Hound, Finnish Lapphund, …"
+
+            If the answer is truly not present in the context, say:
+            "I could not find this information in the provided document."
 
                 Context:
-                {context}
+            {context}
 
-                Question:
-                {question}
+            Question:
+            {question}
 
-                Answer:
-                """
+            Answer:
+            """
+    
 
     # -----------------------------
     # 4️⃣ Ask PDF
