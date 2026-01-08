@@ -23,7 +23,13 @@ RAG_MODEL_NAME = "gpt-4o-mini"  # can adjust
 # -----------------------------
 # Initialize RAG model
 # -----------------------------
-pdf_model = PDFRAGModel(INDEX_NAME, ENDPOINT_NAME, API_KEY, model_name=RAG_MODEL_NAME)
+#pdf_model = PDFRAGModel(INDEX_NAME, ENDPOINT_NAME, API_KEY, model_name=RAG_MODEL_NAME)
+
+pdf_model = PDFRAGModel(
+    index_name=INDEX_NAME,
+    endpoint_name=ENDPOINT_NAME,
+    model_name=RAG_MODEL_NAME,
+)
 
 st.title("PDF Chatbot (RAG)")
 

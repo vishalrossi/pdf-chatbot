@@ -7,6 +7,7 @@ from mlflow import pyfunc
 from mlflow.models.signature import ModelSignature
 from mlflow.types import DataType, Schema, ColSpec
 import json
+import os
 
 class PDFRAGModel:
     """
@@ -16,6 +17,7 @@ class PDFRAGModel:
     - Calls OpenAI LLM for chat
     - Optional: register model in Databricks Model Registry
     """
+    '''
     def __init__(self, index_name, endpoint_name, api_key, model_name="gpt-4o-mini"):
         self.index_name = index_name
         self.endpoint_name = endpoint_name
@@ -24,6 +26,22 @@ class PDFRAGModel:
 
         self.vsc = VectorSearchClient()
         self.client = OpenAI(api_key=api_key)
+    '''
+        
+    def __init__(self, index_name, endpoint_name, model_name= "gpt-4o-mini"):
+        if not os.getenv("OPENAI_API_KEY"):
+            raise RuntimeError(
+                "OPENAI_API_KEY not set. "
+                "Set it via environment variable or .env file."
+            )
+        
+
+        self.client = OpenAI()  # reads from env
+        self.vs_client = VectorSearchClient()
+
+        self.index_name = index_name
+        self.endpoint_name = endpoint_name
+        self.model_name = model_name
 
     # -----------------------------
     # 1️⃣ Similarity search

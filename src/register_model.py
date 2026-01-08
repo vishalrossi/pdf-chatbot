@@ -18,8 +18,14 @@ SCHEMA = "default"
 
 INDEX_NAME = f"{CATALOG}.{SCHEMA}.pdf_chatbot_{ENV}"
 ENDPOINT_NAME = f"pdf_chatbot_endpoint_{ENV}"
+RAG_MODEL_NAME = "gpt-4o-mini"
 
-pdf_model = PDFRAGModel(INDEX_NAME, ENDPOINT_NAME, API_KEY)
+#pdf_model = PDFRAGModel(INDEX_NAME, ENDPOINT_NAME, API_KEY)
+pdf_model = PDFRAGModel(
+    index_name=INDEX_NAME,
+    endpoint_name=ENDPOINT_NAME,
+    model_name=RAG_MODEL_NAME,
+)
 
 # Create experiment if it doesn't exist
 exp_name = "/Shared/pdf_rag_experiment"
