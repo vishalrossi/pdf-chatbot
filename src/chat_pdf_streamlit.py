@@ -1,7 +1,7 @@
 import streamlit as st
 import os
 from langchain_openai import OpenAIEmbeddings
-from model import PDFRAGModel
+#from model import PDFRAGModel
 from dotenv import load_dotenv
 
 ENV_PATH = "/Workspace/vishal/pdf-chatbot/.env"
@@ -24,6 +24,8 @@ RAG_MODEL_NAME = "gpt-4o-mini"  # can adjust
 # Initialize RAG model
 # -----------------------------
 #pdf_model = PDFRAGModel(INDEX_NAME, ENDPOINT_NAME, API_KEY, model_name=RAG_MODEL_NAME)
+
+from model import PDFRAGModel
 
 pdf_model = PDFRAGModel(
     index_name=INDEX_NAME,
