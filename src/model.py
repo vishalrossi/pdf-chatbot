@@ -52,42 +52,40 @@ class PDFRAGModel:
     # -----------------------------
     # 1️⃣ Similarity search
     # -----------------------------
-    '''
-    def retrieve_context(self, query_embedding, k=5):
-        """
-        Retrieve top-k chunks from the existing vector index
-        """
-        results = self.vsc.similarity_search(
-            index_name=self.index_name,
-            query_vector=query_embedding,
-            num_results=k,
-            endpoint_name=self.endpoint_name
-        )
-        return results
-    '''
-
+    
     def retrieve_context(self, query_embedding, k=3):
         """
         Retrieve top-k chunks from the existing vector index
         """
-        results = self.index.similarity_search(
+        response = self.index.similarity_search(
             query_vector=query_embedding,
-            columns=["text"],
+            columns=["text", "source"],
             num_results=k,
         )
-        return results
+        return response["result"]["data_array"]
 
     # -----------------------------
     # 2️⃣ Build context + citations
     # -----------------------------
-    @staticmethod
-    def build_cited_context(results):
+    #@staticmethod
+    def build_cited_context(self, results):
         contexts = []
         citations = []
-        for i, r in enumerate(results):
-            meta = r["metadata"]
-            contexts.append(f"[{i+1}] (Page {meta.get('page')}) {meta.get('text')}")
-            citations.append({"citation_id": i+1, "page": meta.get("page")})
+
+        for i, row in enumerate(results, start=1):
+            score = row[0]
+            text = row[1]
+            source = row[2] if len(row) > 2 else "pdf"
+
+            contexts.append(f"[{i}] {text}")
+            citations.append(
+                {
+                    "id": i,
+                    "score": score,
+                    "source": source,
+                }
+            )
+
         return "\n\n".join(contexts), citations
 
     # -----------------------------
