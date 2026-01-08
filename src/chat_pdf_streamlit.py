@@ -4,9 +4,22 @@ from langchain_openai import OpenAIEmbeddings
 #from model import PDFRAGModel
 from dotenv import load_dotenv
 
-ENV_PATH = "/Workspace/vishal/pdf-chatbot/.env"
+from pathlib import Path
 
-load_dotenv(dotenv_path=ENV_PATH, override=True)
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+ENV_PATH = PROJECT_ROOT / ".env"
+
+print("DEBUG: Loading env from:", ENV_PATH)
+print("DEBUG: .env exists:", ENV_PATH.exists())
+
+load_dotenv(dotenv_path=ENV_PATH)
+
+print("DEBUG: OPENAI_API_KEY =", os.getenv("OPENAI_API_KEY"))
+
+
+#ENV_PATH = "/Workspace/vishal/pdf-chatbot/.env"
+
+#load_dotenv(dotenv_path=ENV_PATH, override=True)
 
 #api_key=os.getenv('OPENAI_API_KEY')
 
@@ -27,12 +40,17 @@ RAG_MODEL_NAME = "gpt-4o-mini"  # can adjust
 
 from model import PDFRAGModel
 
+# Initialize RAG model (once)
 pdf_model = PDFRAGModel(
     index_name=INDEX_NAME,
     endpoint_name=ENDPOINT_NAME,
     model_name=RAG_MODEL_NAME,
 )
 
+# Initialize embeddings (once)
+embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+
+'''
 st.title("PDF Chatbot (RAG)")
 
 # User input
@@ -55,3 +73,20 @@ if st.button("Get Answer") and question:
 
         st.subheader("Citations")
         st.json(result["citations"])
+'''
+
+st.set_page_config(page_title="PDF Chatbot", layout="wide")
+st.title("📄 PDF Chatbot")
+
+user_question = st.text_input(
+    "Ask a question about the PDF",
+    placeholder="What does this document say about X?"
+)
+
+if user_question:
+    with st.spinner("Searching PDF and generating answer..."):
+        query_embedding = embeddings.embed_query(user_question)
+        answer = pdf_model.ask_pdf(query_embedding, user_question)
+
+    st.markdown("### ✅ Answer")
+    st.write(answer)

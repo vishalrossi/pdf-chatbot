@@ -37,7 +37,7 @@ class PDFRAGModel:
         
 
         self.client = OpenAI()  # reads from env
-        self.vs_client = VectorSearchClient()
+        self.vsc = VectorSearchClient()
 
         self.index_name = index_name
         self.endpoint_name = endpoint_name
