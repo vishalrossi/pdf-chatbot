@@ -6,6 +6,7 @@ import mlflow
 from mlflow import pyfunc
 from mlflow.models.signature import ModelSignature
 from mlflow.types import DataType, Schema, ColSpec
+import json
 
 class PDFRAGModel:
     """
@@ -101,40 +102,62 @@ class PDFRAGModel:
     # 5️⃣ Register model in Databricks
     # -----------------------------
         
-    def register_model(self, model_name):
+    def register_model(self, model_name, experiment_name="/Shared/pdf_rag_experiment"):
         """
         Register this PDF RAG model in Databricks Model Registry (Unity Catalog compliant)
+
+        Args:
+            model_name (str): Name of the registered model in Databricks Model Registry
+            experiment_name (str): MLflow experiment path for logging the run
         """
         class PDFRAGWrapper(pyfunc.PythonModel):
             def load_context(self, context):
                 self.pdf_rag = self
 
             def predict(self, context, model_input):
-                # model_input: {"query_embedding": [...], "question": "..."}
-                return self.pdf_rag.ask_pdf(
-                    query_embedding=model_input["query_embedding"],
-                    question=model_input["question"]
-                )
+                """
+                model_input: dict with keys:
+                    - "question": str
+                    - "query_embedding": JSON string of embedding list
+                Returns:
+                    dict with keys:
+                        - "answer": str
+                        - "citations": JSON string
+                """
+                query_embedding = json.loads(model_input["query_embedding"])
+                result = self.pdf_rag.ask_pdf(query_embedding=query_embedding,
+                                            question=model_input["question"])
 
-        # MLflow requires a simple artifact path (no slashes)
-        artifact_path = f"{model_name}_pyfunc"
+                # Convert citations to JSON string
+                result["citations"] = json.dumps(result.get("citations", []))
+                return result
 
         # -----------------------------
-        # Define the input/output schema
+        # Ensure experiment exists
+        # -----------------------------
+        exp = mlflow.get_experiment_by_name(experiment_name)
+        if exp is None:
+            mlflow.create_experiment(experiment_name)
+        mlflow.set_experiment(experiment_name)
+
+        # -----------------------------
+        # Define MLflow signature (Unity Catalog compliant)
         # -----------------------------
         input_schema = Schema([
-            ColSpec(DataType.string, "question"),             # question string
-            ColSpec(DataType.array(DataType.double), "query_embedding")  # embedding vector
+            ColSpec(DataType.string, "question"),
+            ColSpec(DataType.string, "query_embedding")  # JSON string of floats
         ])
         output_schema = Schema([
-            ColSpec(DataType.string, "answer"),              # answer string
-            ColSpec(DataType.string, "citations")           # citations as JSON string
+            ColSpec(DataType.string, "answer"),
+            ColSpec(DataType.string, "citations")       # JSON string
         ])
         signature = ModelSignature(inputs=input_schema, outputs=output_schema)
 
         # -----------------------------
-        # Log and register
+        # Log and register the model
         # -----------------------------
+        artifact_path = f"{model_name}_pyfunc"  # simple name, no slashes or periods
+
         mlflow.pyfunc.log_model(
             python_model=PDFRAGWrapper(),
             artifact_path=artifact_path,
@@ -142,4 +165,4 @@ class PDFRAGModel:
             signature=signature
         )
 
-        print(f"Model registered as '{model_name}' in Databricks Model Registry (Unity Catalog compliant)")
+        print(f"Model '{model_name}' registered successfully in Databricks Model Registry")
