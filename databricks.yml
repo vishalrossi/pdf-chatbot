@@ -26,8 +26,6 @@ x-libraries: &common-libs
   - pypi:
       package: pypdf
   - pypi:
-      package: mlflow
-  - pypi:
       package: databricks-cli
   - pypi:
       package: python-dotenv
