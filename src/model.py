@@ -42,10 +42,17 @@ class PDFRAGModel:
         self.index_name = index_name
         self.endpoint_name = endpoint_name
         self.model_name = model_name
+        
+        # THIS IS THE IMPORTANT PART
+        self.index = self.vsc.get_index(
+            endpoint_name=self.endpoint_name,
+            index_name=self.index_name
+        )
 
     # -----------------------------
     # 1️⃣ Similarity search
     # -----------------------------
+    '''
     def retrieve_context(self, query_embedding, k=5):
         """
         Retrieve top-k chunks from the existing vector index
@@ -55,6 +62,18 @@ class PDFRAGModel:
             query_vector=query_embedding,
             num_results=k,
             endpoint_name=self.endpoint_name
+        )
+        return results
+    '''
+
+    def retrieve_context(self, query_embedding, k=3):
+        """
+        Retrieve top-k chunks from the existing vector index
+        """
+        results = self.index.similarity_search(
+            query_vector=query_embedding,
+            columns=["text"],
+            num_results=k,
         )
         return results
 
