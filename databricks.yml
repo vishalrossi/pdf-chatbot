@@ -41,7 +41,8 @@ x-libraries: &common-libs
       package: pyspark
   - pypi:
       package: streamlit
-
+  - pypi:
+      package: mlflow[databricks]
 
 resources:
   jobs:
