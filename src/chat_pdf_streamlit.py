@@ -6,7 +6,12 @@ from dotenv import load_dotenv
 
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+#PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+if "__file__" in globals():
+    PROJECT_ROOT = Path(__file__).resolve().parents[1]
+else:
+    PROJECT_ROOT = Path(os.getcwd()).resolve()
 ENV_PATH = PROJECT_ROOT / ".env"
 
 print("DEBUG: Loading env from:", ENV_PATH)
