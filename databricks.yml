@@ -50,6 +50,18 @@ x-libraries: &common-libs
 
 resources:
   jobs:
+
+    storage_init:
+      name: vishal-storage-init-${bundle.target}
+      tasks:
+        - task_key: init_storage
+          new_cluster:
+            spark_version: 14.3.x-scala2.12
+            node_type_id: Standard_DS3_v2
+            num_workers: 1
+          spark_python_task:
+            python_file: src/utils/storage.py
+
     pdf_ingestion:
       name: vishal-pdf-ingestion-${bundle.target}
       tasks:
@@ -62,7 +74,7 @@ resources:
           spark_python_task:
             python_file: src/ingest_pdf.py
 
-    storage_init:
+    get_country_names:
       name: vishal-storage-init-${bundle.target}
       tasks:
         - task_key: init_storage
@@ -71,7 +83,7 @@ resources:
             node_type_id: Standard_DS3_v2
             num_workers: 1
           spark_python_task:
-            python_file: src/utils/storage.py
+            python_file: src/utils/get_names.py
 
     register_model:
       name: pdf-register-model-${bundle.target}

@@ -11,15 +11,13 @@ chatbot using Databricks.
 - CI/CD with GitHub Actions
 - Dev / Prod isolation
 
-## Architecture
+## RAG Architecture
 PDF → Embeddings → Vector Search → LLM → API
 
 ## Deployment
 - Push to `dev` → auto deploy to dev
 - Push to `prod` → approval → prod deploy
 
-## Workspace
-/vishal/chatbot
 
 # epassi pdf chatbot architecture
 
@@ -28,17 +26,12 @@ Databricks Workspace
     └── chatbot
         ├── src/
         │   ├── ingest_pdf.py
-        │   ├── rag_chain.py
         │   ├── model.py
-        │   └── config/
-        │       ├── dev.yaml
-        │       └── prod.yaml
-        │
-        ├── notebooks/
-        │   ├── pdf_ingestion.py
-        │   └── chatbot_inference.py
+        │   ├── register_model.py
+        │   └── evaulate.py
+        ├── utils/
+        │   ├── storage.py
         │
         ├── databricks.yml
         ├── requirements.txt
         ├── README.md
-        └── tests/
