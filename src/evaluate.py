@@ -18,6 +18,10 @@ delta_path = "/mnt/delta/evaluation_results"  # Change if needed
 # -----------------------------
 
 
+NON_COUNTRY_KEYWORDS = {
+    "see", "list", "dog", "dogs", "breed", "breeds", "country", "countries"
+}
+
 def extract_countries(pdf_path, start_page=132, end_page=139):
     countries = []
 
@@ -34,19 +38,19 @@ def extract_countries(pdf_path, start_page=132, end_page=139):
                 if not line:
                     continue
 
-                # Skip bullets and breeds
+                # Skip bullets / breed entries
                 if line.startswith(("•", "o")):
                     continue
 
-                # Skip numbers
+                # Skip page numbers
                 if line.isdigit():
                     continue
 
-                # Skip headers / all caps
+                # Skip headers / ALL CAPS
                 if line.isupper():
                     continue
 
-                # Only letters and spaces
+                # Only alphabetic + spaces
                 if not re.match(r"^[A-Za-z ]+$", line):
                     continue
 
@@ -54,9 +58,14 @@ def extract_countries(pdf_path, start_page=132, end_page=139):
                 if len(line) == 1:
                     continue
 
+                # Skip section headers using keywords
+                tokens = set(line.lower().split())
+                if tokens & NON_COUNTRY_KEYWORDS:
+                    continue
+
                 countries.append(line)
 
-    return list(dict.fromkeys(countries))  # preserve order, remove duplicates
+    return list(dict.fromkeys(countries))  # preserve order
 
 predicted_countries = extract_countries(pdf_path)
 
@@ -76,10 +85,14 @@ llm_answer = """
 The document mentions Brazil, Canada, China, Czech Republic, Denmark, and Finland.
 """
 
+retrieval_context = [
+    "\n".join(predicted_countries)
+]
+
 test_case = LLMTestCase(
     input=question,
     actual_output=llm_answer,
-    retrieval_context=[predicted_countries]
+    retrieval_context=retrieval_context
 )
 
 faithfulness = FaithfulnessMetric(threshold=0.7)
