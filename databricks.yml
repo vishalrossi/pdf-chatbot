@@ -41,6 +41,10 @@ x-libraries: &common-libs
       package: streamlit
   - pypi:
       package: mlflow[databricks]
+  - pypi:
+      package: pdfplumber
+  - pypi:
+      package: judgellm
 
 resources:
   jobs:
@@ -90,3 +94,15 @@ resources:
           libraries: *common-libs
           spark_python_task:
             python_file: src/chat_pdf_streamlit.py
+
+    evaluate:
+      name: vishal-pdf-chat-${bundle.target}
+      tasks:
+        - task_key: evaluate_llm
+          new_cluster:
+            spark_version: 14.3.x-scala2.12
+            node_type_id: Standard_DS3_v2
+            num_workers: 1
+          libraries: *common-libs
+          spark_python_task:
+            python_file: src/evaluate.py

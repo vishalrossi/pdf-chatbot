@@ -17,7 +17,16 @@ class PDFRAGModel:
     - Calls OpenAI LLM for chat
     - Optional: register model in Databricks Model Registry
     """
-        
+    
+    # List of countries appearing in your PDF
+    COUNTRY_LIST = [
+        "Australia", "Brazil", "Canada", "China", "Czech Republic",
+        "Denmark", "Finland", "France", "Germany", "Hungary", "Iceland",
+        "India", "Ireland", "Japan", "Korea", "Mexico", "Norway",
+        "South Africa", "Spain", "Sweden", "Thailand", "Turkey", 
+        "United Kingdom", "United States", "Zimbabwe"
+        ]
+    
     def __init__(self, index_name, endpoint_name, model_name= "gpt-4o-mini"):
         if not os.getenv("OPENAI_API_KEY"):
             raise RuntimeError(
@@ -54,85 +63,110 @@ class PDFRAGModel:
         )
         return response["result"]["data_array"]
 
-    # -----------------------------
-    # 2️⃣ Build context + citations
-    # -----------------------------
-    #@staticmethod
-    def build_cited_context(self, results):
-        contexts = []
+
+    def build_cited_context(self, results, country=None):
+        """
+        Build context string and citations safely.
+        Handles results as a list of strings.
+        """
+        context_lines = []
         citations = []
 
-        for i, row in enumerate(results, start=1):
-            score = row[0]
-            text = row[1]
+        for idx, text in enumerate(results):
+            # Ensure text is string
+            text = str(text).strip()
+            if not text:
+                continue
 
-            contexts.append(f"[{i}] {text}")
-            citations.append(
-                {
-                    "id": i,
-                    "score": score,
-                }
-            )
+            # Split into lines
+            lines = text.split("\n")
+            relevant_lines = []
 
-        return "\n\n".join(contexts), citations
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                if country:
+                    # Include only lines with the country or bullet points
+                    if country.lower() in line.lower() or line.startswith("•"):
+                        relevant_lines.append(line)
+                else:
+                    relevant_lines.append(line)
 
-    # -----------------------------
-    # 3️⃣ Build LLM prompt
-    # -----------------------------
-    @staticmethod
-    def build_prompt(context, question):
-        return f"""
-            You are a PDF-based assistant.
+            if not relevant_lines:
+                continue
 
-            Answer the question using ONLY the context below.
+            # Add to context and citations
+            context_lines.extend(relevant_lines)
+            citations.append({
+                "id": idx + 1,  # simple chunk id
+                "score": "\n".join(relevant_lines)
+            })
 
-            The context may contain:
-            - Lists
-            - Tables
-            - Headings (for example, country names)
+        # Combine all relevant lines into a single string for the LLM
+        context = "\n".join(context_lines)
+        return context, citations
 
-            If the answer is present in a list under a relevant heading, extract and summarize it as a sentence.
-            For example: "Dog breeds from Finland are: Finnish Hound, Finnish Lapphund, …"
-
-            If the answer is truly not present in the context, say:
-            "I could not find this information in the provided document."
-
-                Context:
-            {context}
-
-            Question:
-            {question}
-
-            Answer:
-            """
-    
-
-    # -----------------------------
-    # 4️⃣ Ask PDF
-    # -----------------------------
-    def ask_pdf(self, query_embedding, question, k=5):
+    def ask_pdf(self, query_embedding, question, k=2):
         """
-        Perform similarity search + LLM completion
+        Perform similarity search + LLM completion with country filtering.
+        Returns answer and citations for Streamlit display.
         """
+        # 1️⃣ Detect country mentioned in the question
+        country_in_question = None
+        for c in self.COUNTRY_LIST:
+            if c.lower() in question.lower():
+                country_in_question = c
+                break
+
+        # 2️⃣ Retrieve top-k chunks from vector search
         results = self.retrieve_context(query_embedding, k=k)
-        context, citations = self.build_cited_context(results)
-        prompt = self.build_prompt(context, question)
 
+        # 3️⃣ Build context and citations safely
+        context, citations = self.build_cited_context(results, country=country_in_question)
+
+        # 4️⃣ System prompt for the LLM
+        system_prompt = """
+    You are a helpful assistant that answers questions using ONLY the provided context.
+    The context may contain countries and lists of dog breeds.
+    If the country is in the context, list all breeds in a natural sentence.
+    If the country is not found, respond exactly:
+    'I could not find this information in the provided document.'
+    Always preserve chunk-level citations.
+    """
+
+        # 5️⃣ User prompt including context and question
+        user_prompt = f"""
+    Context:
+    {context}
+
+    Question:
+    {question}
+
+    Answer:
+    """
+
+        # 6️⃣ Call the LLM
         response = self.client.chat.completions.create(
             model=self.model_name,
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
             temperature=0
         )
 
+        # 7️⃣ Return the answer + citations
         return {
-            "answer": response.choices[0].message.content,
+            "answer": response.choices[0].message.content.strip(),
             "citations": citations
         }
+
 
     # -----------------------------
     # 5️⃣ Register model in Databricks
     # -----------------------------
-        
+
     def register_model(self, model_name, experiment_name="/Shared/pdf_rag_experiment"):
         """
         Register this PDF RAG model in Databricks Model Registry (Unity Catalog compliant)
