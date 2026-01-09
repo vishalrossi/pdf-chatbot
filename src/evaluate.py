@@ -1,5 +1,7 @@
 import pdfplumber
-from judge import Judge
+from deepeval.metrics import FaithfulnessMetric
+from deepeval.test_case import LLMTestCase
+from deepeval.metrics import AnswerRelevancyMetric
 import pandas as pd
 
 # -----------------------------
@@ -12,7 +14,7 @@ delta_path = "/mnt/delta/evaluation_results"  # Change if needed
 # -----------------------------
 # 2️⃣ Extract countries (pages 132-138)
 # -----------------------------
-def extract_countries(pdf_path, start_page=132, end_page=138):
+def extract_countries(pdf_path, start_page=132, end_page=139):
     countries = []
     with pdfplumber.open(pdf_path) as pdf:
         start_idx = start_page - 1
@@ -41,52 +43,26 @@ print(f"Extracted countries saved to: {output_csv}")
 print("Predicted countries:", predicted_countries)
 
 
-'''
-# -----------------------------
-# 3️⃣ Ground truth (replace with actual list)
-# -----------------------------
-ground_truth = [
-    "Brazil", "Canada", "China", "Czech Republic", "Denmark", "Finland"
-    # Add all countries that should appear in pages 25-37
-]
+question = "Which countries are mentioned in the document?"
 
-# -----------------------------
-# 4️⃣ Evaluate with JudgeLLM
-# -----------------------------
-judge = Judge()
-data = [{"prediction": pred, "reference": ref} 
-        for pred, ref in zip(predicted_countries, ground_truth)]
+llm_answer = """
+The document mentions Brazil, Canada, China, Czech Republic, Denmark, and Finland.
+"""
 
-results = []
-for item in data:
-    result = judge.evaluate(
-        completion=item["prediction"],
-        reference=item["reference"],
-        criteria="Correctness"
-    )
-    result.update({
-        "prediction": item["prediction"],
-        "reference": item["reference"]
-    })
-    results.append(result)
+test_case = LLMTestCase(
+    input=question,
+    actual_output=llm_answer,
+    retrieval_context=[predicted_countries]
+)
 
-# -----------------------------
-# 5️⃣ Aggregate metrics
-# -----------------------------
-accuracy = sum(r['score'] for r in results) / len(results)
-print(f"Accuracy: {accuracy:.2f}")
+faithfulness = FaithfulnessMetric(threshold=0.7)
+faithfulness.measure(test_case)
 
-# -----------------------------
-# 6️⃣ Store results
-# -----------------------------
-# Convert to DataFrame
-df = pd.DataFrame(results)
+print("Faithfulness:", faithfulness.score)
+print("Reason:", faithfulness.reason)
 
-# Save as Delta table
-df.to_parquet(delta_path, index=False)
-print(f"Results saved to Delta path: {delta_path}")
+relevancy = AnswerRelevancyMetric(threshold=0.7)
+relevancy.measure(test_case)
 
-# Optionally also save JSON or CSV
-df.to_csv("/dbfs/FileStore/evaluation_results.csv", index=False)
-df.to_json("/dbfs/FileStore/evaluation_results.json", orient="records", indent=2)
-'''
+print("Relevancy:", relevancy.score)
+print("Reason:", relevancy.reason)

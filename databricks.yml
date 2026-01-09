@@ -44,7 +44,7 @@ x-libraries: &common-libs
   - pypi:
       package: pdfplumber
   - pypi:
-      package: judgellm
+      package: deepeval
 
 resources:
   jobs:
