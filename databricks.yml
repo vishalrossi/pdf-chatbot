@@ -47,6 +47,8 @@ x-libraries: &common-libs
       package: deepeval
   - pypi:
       package: regex
+  - pypi:
+      package: matplotlib
 
 resources:
   jobs:
