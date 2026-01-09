@@ -3,14 +3,19 @@ from deepeval.metrics import FaithfulnessMetric
 from deepeval.test_case import LLMTestCase
 from deepeval.metrics import AnswerRelevancyMetric
 import pandas as pd
+import pypdf
 
 # -----------------------------
 # 1️⃣ Paths
 # -----------------------------
-pdf_path = "/dbfs/databricks_vishal/chatbot/rag_data/pdf/About_dogs.pdf"
-output_csv = "/dbfs/databricks_vishal/chatbot/rag_data/pdf/extracted_countries.csv"
+pdf_path = "/Volumes/databricks_vishal/chatbot/rag_data/pdf/About_Dogs.pdf"
+output_csv = "/Volumes/databricks_vishal/chatbot/rag_data/pdf/extracted_countries.csv"
 delta_path = "/mnt/delta/evaluation_results"  # Change if needed
 
+read_pdf = pypdf.PdfReader(pdf_path)
+print(len(read_pdf.pages))
+
+'''
 # -----------------------------
 # 2️⃣ Extract countries (pages 132-138)
 # -----------------------------
@@ -66,3 +71,4 @@ relevancy.measure(test_case)
 
 print("Relevancy:", relevancy.score)
 print("Reason:", relevancy.reason)
+'''
