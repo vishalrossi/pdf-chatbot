@@ -89,4 +89,3 @@ df.to_csv(output_csv, index=False)
 
 print(f"Extracted countries saved to: {output_csv}")
 print("Predicted countries:", predicted_countries)
-
