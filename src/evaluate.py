@@ -6,6 +6,9 @@ import pandas as pd
 import re
 import os
 from dotenv import load_dotenv
+from datetime import datetime, timezone
+import uuid
+from pyspark.sql import SparkSession
 
 # -----------------------------
 # Config
@@ -27,7 +30,7 @@ os.environ["OPENAI_API_KEY"] = api_key
 # -----------------------------
 pdf_path = "/Volumes/databricks_vishal/chatbot/rag_data/pdf/About_Dogs.pdf"
 output_csv = "/Volumes/databricks_vishal/chatbot/rag_data/pdf/extracted_countries.csv"
-delta_path = "/mnt/delta/evaluation_results"  # Change if needed
+delta_path = "/Volumes/databricks_vishal/chatbot/rag_data/eval_results/"  # Change if needed
 
 
 # -----------------------------
@@ -96,10 +99,10 @@ print(f"Extracted countries saved to: {output_csv}")
 print("Predicted countries:", predicted_countries)
 
 
-question = "Which countries are mentioned in the document?"
+question = "Name some of the countries mentioned in the document."
 
 llm_answer = """
-The document mentions Brazil, Canada, China, Czech Republic, Denmark, and Finland.
+The document mentions Brazil, Canada, China, Czech Republic, Denmark, Finland, Norway, South Africa and others .
 """
 
 retrieval_context = [
@@ -123,3 +126,25 @@ relevancy.measure(test_case)
 
 print("Relevancy:", relevancy.score)
 print("Reason:", relevancy.reason)
+
+
+
+results = [{
+    "run_id": str(uuid.uuid4()),
+    "timestamp":  datetime.now(timezone.utc).isoformat(),
+    "document": "About_dogs.pdf",
+    "page_range": "132-139",
+    "question": question,
+    "answer": llm_answer,
+    "faithfulness_score": faithfulness.score,
+    "faithfulness_reason": faithfulness.reason,
+    "relevancy_score": relevancy.score,
+    "relevancy_reason": relevancy.reason
+}]
+
+spark = SparkSession.builder.getOrCreate()
+df = spark.createDataFrame(results)
+
+df.write.format("delta") \
+  .mode("append") \
+  .save(delta_path)
