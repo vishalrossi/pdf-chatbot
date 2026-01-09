@@ -4,6 +4,23 @@ from deepeval.test_case import LLMTestCase
 from deepeval.metrics import AnswerRelevancyMetric
 import pandas as pd
 import re
+import os
+from dotenv import load_dotenv
+
+# -----------------------------
+# Config
+# -----------------------------
+ENV_PATH = "/Workspace/vishal/pdf-chatbot/.env"
+
+load_dotenv(dotenv_path=ENV_PATH, override=True)
+
+api_key = os.getenv("OPENAI_API_KEY")
+
+if api_key is None:
+    raise RuntimeError("OPENAI_API_KEY is not set")
+
+os.environ["OPENAI_API_KEY"] = api_key
+
 
 # -----------------------------
 # 1️⃣ Paths
