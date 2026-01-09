@@ -45,6 +45,8 @@ x-libraries: &common-libs
       package: pdfplumber
   - pypi:
       package: deepeval
+  - pypi:
+      package: regex
 
 resources:
   jobs:

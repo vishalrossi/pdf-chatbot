@@ -3,7 +3,7 @@ from deepeval.metrics import FaithfulnessMetric
 from deepeval.test_case import LLMTestCase
 from deepeval.metrics import AnswerRelevancyMetric
 import pandas as pd
-import pypdf
+import re
 
 # -----------------------------
 # 1️⃣ Paths
@@ -12,29 +12,51 @@ pdf_path = "/Volumes/databricks_vishal/chatbot/rag_data/pdf/About_Dogs.pdf"
 output_csv = "/Volumes/databricks_vishal/chatbot/rag_data/pdf/extracted_countries.csv"
 delta_path = "/mnt/delta/evaluation_results"  # Change if needed
 
-read_pdf = pypdf.PdfReader(pdf_path)
-print(len(read_pdf.pages))
 
-'''
 # -----------------------------
 # 2️⃣ Extract countries (pages 132-138)
 # -----------------------------
+
+
 def extract_countries(pdf_path, start_page=132, end_page=139):
     countries = []
+
     with pdfplumber.open(pdf_path) as pdf:
-        start_idx = start_page - 1
-        end_idx = end_page - 1
-        for i in range(start_idx, end_idx + 1):
-            page = pdf.pages[i]
-            text = page.extract_text()
+        for i in range(start_page - 1, end_page):
+            text = pdf.pages[i].extract_text()
             if not text:
                 continue
-            lines = text.split("\n")
-            for line in lines:
+
+            for line in text.split("\n"):
                 line = line.strip()
-                if line and not line.startswith("•"):
-                    countries.append(line)
-    return list(dict.fromkeys(countries))  # remove duplicates
+
+                # Skip empty
+                if not line:
+                    continue
+
+                # Skip bullets and breeds
+                if line.startswith(("•", "o")):
+                    continue
+
+                # Skip numbers
+                if line.isdigit():
+                    continue
+
+                # Skip headers / all caps
+                if line.isupper():
+                    continue
+
+                # Only letters and spaces
+                if not re.match(r"^[A-Za-z ]+$", line):
+                    continue
+
+                # Skip single letters
+                if len(line) == 1:
+                    continue
+
+                countries.append(line)
+
+    return list(dict.fromkeys(countries))  # preserve order, remove duplicates
 
 predicted_countries = extract_countries(pdf_path)
 
@@ -71,4 +93,3 @@ relevancy.measure(test_case)
 
 print("Relevancy:", relevancy.score)
 print("Reason:", relevancy.reason)
-'''
