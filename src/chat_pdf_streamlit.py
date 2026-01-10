@@ -32,15 +32,17 @@ def load_environment() -> None:
 
     env_path = project_root / ".env"
     load_dotenv(dotenv_path=env_path)
+    
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        st.error("OPENAI_API_KEY is not set")
+        st.stop()
+
+    # CRITICAL: make it explicit
+    os.environ["OPENAI_API_KEY"] = api_key
 
 
 load_environment()
-
-api_key = os.environ.get("OPENAI_API_KEY")
-
-if not os.getenv("OPENAI_API_KEY"):
-    st.error("OPENAI_API_KEY is not set")
-    st.stop()
 
 
 ENV = os.getenv("DATABRICKS_BUNDLE_TARGET", "dev")
