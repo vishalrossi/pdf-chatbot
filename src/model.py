@@ -35,17 +35,6 @@ Security & configuration:
 
 """
 
-"""
-Retrieval-Augmented Generation (RAG) model for PDF-based Q&A using
-Databricks Vector Search and OpenAI.
-
-This implementation is:
-- MLflow PyFunc compatible
-- Unity Catalog compatible
-- Safe for Databricks Model Serving
-- Free of pickle / threading errors
-"""
-
 from databricks.vector_search.client import VectorSearchClient
 from openai import OpenAI
 import mlflow
@@ -296,85 +285,3 @@ Answer:
                 "model_config": "model_config.json"
             },
         )
-
-
-
-    '''
-    # ------------------------------------------------------------------
-    # MLflow registration
-    # ------------------------------------------------------------------
-
-    def register_model(
-        self,
-        model_name: str,
-        experiment_name: str = "/Shared/pdf_rag_experiment",
-    ) -> None:
-        """
-        Register this PDF RAG model in Databricks Model Registry.
-
-        Args:
-            model_name: Name of the registered model.
-            experiment_name: MLflow experiment path.
-        """
-
-        pdf_rag_instance = self
-
-        class PDFRAGWrapper(pyfunc.PythonModel):
-            """
-            MLflow PyFunc wrapper for PDFRAGModel.
-            """
-
-            def load_context(self, context):
-                self.pdf_rag = pdf_rag_instance
-
-            def predict(self, context, model_input):
-                """
-                Args:
-                    model_input: Dict with keys:
-                        - question (str)
-                        - query_embedding (JSON string)
-
-                Returns:
-                    Dict with keys:
-                        - answer (str)
-                        - citations (JSON string)
-                """
-                query_embedding = json.loads(model_input["query_embedding"])
-
-                result = self.pdf_rag.ask_pdf(
-                    query_embedding=query_embedding,
-                    question=model_input["question"],
-                )
-
-                result["citations"] = json.dumps(result.get("citations", []))
-                return result
-
-        if mlflow.get_experiment_by_name(experiment_name) is None:
-            mlflow.create_experiment(experiment_name)
-        mlflow.set_experiment(experiment_name)
-
-        input_schema = Schema(
-            [
-                ColSpec(DataType.string, "question"),
-                ColSpec(DataType.string, "query_embedding"),
-            ]
-        )
-        output_schema = Schema(
-            [
-                ColSpec(DataType.string, "answer"),
-                ColSpec(DataType.string, "citations"),
-            ]
-        )
-
-        signature = ModelSignature(
-            inputs=input_schema,
-            outputs=output_schema,
-        )
-
-        mlflow.pyfunc.log_model(
-            python_model=PDFRAGWrapper(),
-            artifact_path=f"{model_name}_pyfunc",
-            registered_model_name=model_name,
-            signature=signature,
-        )
-    '''
