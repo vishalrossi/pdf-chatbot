@@ -86,7 +86,7 @@ def get_pdf_rag_model() -> PDFRAGModel:
         model_name=RAG_MODEL_NAME,
     )
 
-API_KEY = os.environ.get("OPENAI_API_KEY")
+api_key = os.environ.get("OPENAI_API_KEY")
 embeddings = get_embeddings()
 pdf_model = get_pdf_rag_model()
 
