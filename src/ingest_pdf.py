@@ -1,18 +1,17 @@
 """
-PDF to Databricks Vector Search pipeline
+PDF to Databricks Vector Search pipeline (unique index per run)
 
-Steps:
-1. Load PDF pages
-2. Select relevant pages
-3. Split pages into chunks
-4. Generate embeddings using OpenAI (safe 2D list)
-5. Save chunks + embeddings to Delta
-6. Create or sync Vector Search index in Databricks
-
-Safe for repeated runs and production deployment.
+Features:
+- Loads PDF pages
+- Selects relevant pages
+- Splits pages into chunks
+- Generates embeddings using OpenAI (safe 2D list)
+- Saves chunks + embeddings to Delta table
+- Creates a Vector Search index with a timestamp to avoid collisions
 """
 
 import os
+from datetime import datetime
 from typing import List, Tuple
 from pyspark.sql import SparkSession
 from dotenv import load_dotenv
@@ -23,7 +22,6 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from databricks.vector_search.client import VectorSearchClient
 from utils.storage import BASE_VOLUME_PATH
-
 
 # -----------------------------
 # Configuration
@@ -41,7 +39,6 @@ PDF_PATH = f"{BASE_VOLUME_PATH}/pdf/About_Dogs.pdf"
 CATALOG = "databricks_vishal"
 SCHEMA = "default"
 ENDPOINT_NAME = f"pdf_chatbot_endpoint_{ENV}"
-INDEX_NAME = f"{CATALOG}.{SCHEMA}.pdf_chatbot_{ENV}"
 TABLE_NAME = f"pdf_chatbot_embeddings_{ENV}"
 SOURCE_TABLE_NAME = f"{CATALOG}.{SCHEMA}.pdf_chatbot_embeddings_{ENV}"
 
@@ -51,20 +48,11 @@ CHUNK_OVERLAP = 50
 PAGE_START = 132
 PAGE_END = 140
 
-
 # -----------------------------
 # Helper Functions
 # -----------------------------
 def load_pdf_pages(pdf_path: str) -> List:
-    """
-    Load pages from a PDF using PyPDFLoader.
-
-    Args:
-        pdf_path: Path to PDF.
-
-    Returns:
-        List of page documents.
-    """
+    """Load pages from a PDF using PyPDFLoader."""
     loader = PyPDFLoader(pdf_path)
     docs = loader.load()
     print(f"Loaded {len(docs)} pages from PDF")
@@ -72,7 +60,7 @@ def load_pdf_pages(pdf_path: str) -> List:
 
 
 def select_pages(docs: List, start: int, end: int) -> List:
-    """Select relevant pages."""
+    """Select relevant pages from PDF."""
     return docs[start:end]
 
 
@@ -90,10 +78,8 @@ def chunk_documents(docs: List, chunk_size: int, chunk_overlap: int) -> List:
 
 def generate_embeddings_safe(chunks: List, model: str, api_key: str) -> Tuple[List[List[float]], List[str]]:
     """
-    Generate embeddings safely as a 2D list.
-
-    Returns:
-        Tuple of embeddings and corresponding chunk texts.
+    Generate embeddings for chunks safely as a 2D list.
+    Returns embeddings and chunk texts.
     """
     texts = [c.page_content for c in chunks]
     embeddings_raw = OpenAIEmbeddings(model=model, api_key=api_key).embed_documents(texts)
@@ -109,9 +95,7 @@ def generate_embeddings_safe(chunks: List, model: str, api_key: str) -> Tuple[Li
 
 
 def initialize_vector_search(endpoint_name: str) -> VectorSearchClient:
-    """
-    Initialize Vector Search client and ensure endpoint exists.
-    """
+    """Initialize Vector Search client and ensure endpoint exists."""
     client = VectorSearchClient()
     endpoints = [e["name"] for e in client.list_endpoints().get("endpoints", [])]
     if endpoint_name not in endpoints:
@@ -134,20 +118,16 @@ def save_to_delta(texts: List[str], embeddings: List[List[float]], spark: SparkS
     print(f"Saved embeddings to Delta table '{table_name}'")
 
 
-def create_or_sync_index_safe(client: VectorSearchClient, endpoint_name: str, index_name: str,
-                              source_table_name: str, embeddings: List[List[float]]) -> None:
+def create_or_sync_index_with_timestamp(client: VectorSearchClient, endpoint_name: str, base_index_name: str,
+                                        source_table_name: str, embeddings: List[List[float]]) -> str:
     """
-    Create or sync a Vector Search index safely.
+    Create a Vector Search index with a timestamp suffix to ensure uniqueness.
 
-    Uses positional argument for endpoint_name to match SDK requirements.
+    Returns:
+        The full index name created.
     """
-    # list_indexes expects endpoint_name as positional argument
-    existing_indexes_resp = client.list_indexes(endpoint_name)
-    existing_indexes = [i["name"] for i in existing_indexes_resp.get("indexes", [])]
-
-    if index_name in existing_indexes:
-        print(f"Index '{index_name}' already exists. Skipping creation.")
-        return
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    index_name = f"{base_index_name}_{timestamp}"
 
     embedding_dim = len(embeddings[0])
     client.create_delta_sync_index(
@@ -160,27 +140,37 @@ def create_or_sync_index_safe(client: VectorSearchClient, endpoint_name: str, in
         embedding_vector_column="embedding"
     )
     print(f"Vector Search index '{index_name}' created with dimension {embedding_dim}")
+    return index_name
 
 
 # -----------------------------
 # Main pipeline
 # -----------------------------
 def main():
+    # 1️⃣ Load PDF pages
     docs = load_pdf_pages(PDF_PATH)
     selected_pages = select_pages(docs, PAGE_START, PAGE_END)
+
+    # 2️⃣ Split pages into chunks
     chunks = chunk_documents(selected_pages, CHUNK_SIZE, CHUNK_OVERLAP)
+
+    # 3️⃣ Generate embeddings safely
     embeddings, texts = generate_embeddings_safe(chunks, EMBEDDING_MODEL, API_KEY)
 
+    # 4️⃣ Save to Delta
     spark = SparkSession.builder.getOrCreate()
     save_to_delta(texts, embeddings, spark, TABLE_NAME)
 
+    # 5️⃣ Initialize Vector Search
     client = initialize_vector_search(ENDPOINT_NAME)
-    create_or_sync_index_safe(client, ENDPOINT_NAME, INDEX_NAME, SOURCE_TABLE_NAME, embeddings)
+
+    # 6️⃣ Create Vector Search index with timestamp to avoid collisions
+    index_name = create_or_sync_index_with_timestamp(client, ENDPOINT_NAME, INDEX_NAME, SOURCE_TABLE_NAME, embeddings)
+    print(f"Final index created: {index_name}")
 
 
 if __name__ == "__main__":
     main()
-
 
 '''
 import os
