@@ -170,6 +170,7 @@ from mlflow.types import DataType, Schema, ColSpec
 import json
 import os
 import pandas as pd
+from typing import List, Dict, Tuple, Optional, Any
 
 class PDFRAGModel:
     """
@@ -185,6 +186,7 @@ class PDFRAGModel:
 
     #COUNTRY_LIST = input_counties_df["Country"].dropna().tolist()
     
+    '''
     # List of countries appearing in your PDF
     COUNTRY_LIST = [
         "Australia", "Brazil", "Canada", "China", "Czech Republic",
@@ -193,6 +195,7 @@ class PDFRAGModel:
         "South Africa", "Spain", "Sweden", "Thailand", "Turkey", 
         "United Kingdom", "United States", "Zimbabwe"
         ]
+    '''
     
     def __init__(self, index_name: str, endpoint_name: str, model_name= "gpt-4o-mini"):
         """
@@ -221,11 +224,26 @@ class PDFRAGModel:
         self.endpoint_name = endpoint_name
         self.model_name = model_name
         
+        self.COUNTRY_LIST = self._load_country_list()
+        
         # THIS IS THE IMPORTANT PART
         self.index = self.vsc.get_index(
             endpoint_name=self.endpoint_name,
             index_name=self.index_name
         )
+
+    @staticmethod
+    def _load_country_list(csv_path: str = "/Volumes/databricks_vishal/chatbot/rag_data/pdf/extracted_countries.csv") -> List[str]:
+        df = pd.read_csv(csv_path)
+        return df["Country"].dropna().tolist()
+    
+    @staticmethod
+    def _detect_country(question: str, countries: List[str]) -> Optional[str]:
+        question_lower = question.lower()
+        for country in countries:
+            if country.lower() in question_lower:
+                return country
+        return None
 
     # -----------------------------
     # 1️⃣ Similarity search
@@ -286,6 +304,7 @@ class PDFRAGModel:
         context = "\n".join(context_lines)
         return context, citations
 
+    '''
     def ask_pdf(self, query_embedding, question, k=2):
         """
         Perform similarity search + LLM completion with country filtering.
@@ -340,7 +359,33 @@ class PDFRAGModel:
             "answer": response.choices[0].message.content.strip(),
             "citations": citations
         }
+    '''
 
+    def ask_pdf(self, query_embedding: List[float], question: str, k: int = 2) -> Dict[str, Any]:
+        country = self._detect_country(question, self.COUNTRY_LIST)
+        chunks = self.retrieve_context(query_embedding, k=k)
+        context, citations = self.build_cited_context(chunks, country)
+        system_prompt = (
+            "You are a helpful assistant that answers questions using ONLY the provided context.\n"
+            "The context may contain countries and lists of dog breeds.\n"
+            "If the country is not found, respond exactly: 'I could not find this information in the provided document.'\n"
+            "Always preserve chunk-level citations."
+        )
+        user_prompt = f"""
+            Context:
+            {context}
+
+            Question:
+            {question}
+
+            Answer:
+            """
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
+            temperature=0,
+        )
+        return {"answer": response.choices[0].message.content.strip(), "citations": citations}
 
     # -----------------------------
     # 5️⃣ Register model in Databricks
