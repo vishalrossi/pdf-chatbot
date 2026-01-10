@@ -180,11 +180,11 @@ class PDFRAGModel:
     - Optional: register model in Databricks Model Registry
     """
     
-    input_countries_path = "/Volumes/databricks_vishal/chatbot/rag_data/pdf/extracted_countries.csv"
-    input_counties_df = pd.read_csv(input_countries_path)
+    #input_countries_path = "/Volumes/databricks_vishal/chatbot/rag_data/pdf/extracted_countries.csv"
+    #input_counties_df = pd.read_csv(input_countries_path)
 
-    COUNTRY_LIST = input_counties_df["Country"].dropna().tolist()
-    '''
+    #COUNTRY_LIST = input_counties_df["Country"].dropna().tolist()
+    
     # List of countries appearing in your PDF
     COUNTRY_LIST = [
         "Australia", "Brazil", "Canada", "China", "Czech Republic",
@@ -193,8 +193,20 @@ class PDFRAGModel:
         "South Africa", "Spain", "Sweden", "Thailand", "Turkey", 
         "United Kingdom", "United States", "Zimbabwe"
         ]
-    '''
-    def __init__(self, index_name, endpoint_name, model_name= "gpt-4o-mini"):
+    
+    def __init__(self, index_name: str, endpoint_name: str, model_name= "gpt-4o-mini"):
+        """
+        Initialize the PDF RAG model.
+
+        Args:
+            index_name: Fully qualified Vector Search index name.
+            endpoint_name: Databricks Vector Search endpoint name.
+            model_name: OpenAI chat model name.
+
+        Raises:
+            RuntimeError: If OPENAI_API_KEY is not set.
+        """
+
         if not os.getenv("OPENAI_API_KEY"):
             raise RuntimeError(
                 "OPENAI_API_KEY not set. "
