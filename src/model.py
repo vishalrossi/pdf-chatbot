@@ -35,6 +35,16 @@ Security & configuration:
 
 """
 
+"""
+Retrieval-Augmented Generation (RAG) model for PDF-based Q&A using
+Databricks Vector Search and OpenAI.
+
+This implementation is:
+- MLflow PyFunc compatible
+- Unity Catalog compatible
+- Safe for Databricks Model Serving
+- Free of pickle / threading errors
+"""
 
 from databricks.vector_search.client import VectorSearchClient
 from openai import OpenAI
@@ -46,47 +56,47 @@ from mlflow.types import DataType, Schema, ColSpec
 import json
 import os
 from typing import List, Dict, Tuple, Optional, Any
-import cloudpickle
 
 
-# ----------------------------------------------------------------------
-# MLflow PyFunc wrapper (top-level for serialization)
-# ----------------------------------------------------------------------
+# ============================================================================
+# MLflow PyFunc Wrapper (TOP-LEVEL — REQUIRED)
+# ============================================================================
 class PDFRAGWrapper(pyfunc.PythonModel):
     """
-    MLflow PyFunc wrapper for PDFRAGModel.
+    MLflow PyFunc wrapper that reconstructs PDFRAGModel
+    from a serialized configuration.
     """
 
     def load_context(self, context) -> None:
         """
-        Load the serialized PDFRAGModel from artifacts.
+        Load model configuration and recreate PDFRAGModel.
         """
-        model_path = context.artifacts["pdf_rag_model"]
-        with open(model_path, "rb") as f:
-            self.pdf_rag = cloudpickle.load(f)
+        with open(context.artifacts["model_config"], "r") as f:
+            config = json.load(f)
+
+        self.pdf_rag = PDFRAGModel.from_config(config)
 
     def predict(self, context, model_input: dict) -> dict:
+        """
+        Run inference using the reconstructed PDFRAGModel.
+        """
         query_embedding = json.loads(model_input["query_embedding"])
+
         result = self.pdf_rag.ask_pdf(
             query_embedding=query_embedding,
-            question=model_input["question"]
+            question=model_input["question"],
         )
+
         result["citations"] = json.dumps(result.get("citations", []))
         return result
 
-# ----------------------------------------------------------------------
-# Main PDF RAG Model
-# ----------------------------------------------------------------------
+
+# ============================================================================
+# Main RAG Model
+# ============================================================================
 class PDFRAGModel:
     """
     Retrieval-Augmented Generation (RAG) model over PDF content.
-
-    This model:
-    - Uses an existing Databricks Vector Search index
-    - Accepts precomputed query embeddings
-    - Retrieves relevant PDF chunks
-    - Generates answers using an OpenAI chat model
-    - Can be registered as an MLflow PyFunc model (Unity Catalog compliant)
     """
 
     COUNTRY_LIST: List[str] = [
@@ -97,178 +107,141 @@ class PDFRAGModel:
         "United Kingdom", "United States", "Zimbabwe",
     ]
 
+    # ------------------------------------------------------------------
+    # Initialization
+    # ------------------------------------------------------------------
     def __init__(
         self,
         index_name: str,
         endpoint_name: str,
         model_name: str = "gpt-4o-mini",
     ) -> None:
-        """
-        Initialize the PDF RAG model.
-
-        Args:
-            index_name: Fully qualified Databricks Vector Search index name.
-            endpoint_name: Databricks Vector Search endpoint name.
-            model_name: OpenAI chat model name.
-
-        Raises:
-            RuntimeError: If OPENAI_API_KEY is not set.
-        """
         if not os.getenv("OPENAI_API_KEY"):
-            raise RuntimeError(
-                "OPENAI_API_KEY not set. "
-                "Please set it as an environment variable."
-            )
-
-        self.client = OpenAI()
-        self.vsc = VectorSearchClient()
+            raise RuntimeError("OPENAI_API_KEY must be set")
 
         self.index_name = index_name
         self.endpoint_name = endpoint_name
         self.model_name = model_name
 
-        # Retrieve an existing vector search index
+        # IMPORTANT: clients are created at runtime (NOT serialized)
+        self.client = OpenAI()
+        self.vsc = VectorSearchClient()
+
         self.index = self.vsc.get_index(
             endpoint_name=self.endpoint_name,
             index_name=self.index_name,
         )
 
     # ------------------------------------------------------------------
+    # Serialization helpers (CRITICAL)
+    # ------------------------------------------------------------------
+    def to_config(self) -> dict:
+        """
+        Serialize lightweight model configuration only.
+        """
+        return {
+            "index_name": self.index_name,
+            "endpoint_name": self.endpoint_name,
+            "model_name": self.model_name,
+        }
+
+    @classmethod
+    def from_config(cls, config: dict) -> "PDFRAGModel":
+        """
+        Reconstruct model from serialized configuration.
+        """
+        return cls(
+            index_name=config["index_name"],
+            endpoint_name=config["endpoint_name"],
+            model_name=config["model_name"],
+        )
+
+    # ------------------------------------------------------------------
     # Retrieval
     # ------------------------------------------------------------------
-
     def retrieve_context(
         self,
         query_embedding: List[float],
         k: int = 3,
     ) -> List[str]:
-        """
-        Retrieve top-k text chunks from the vector search index.
-
-        Args:
-            query_embedding: Precomputed embedding vector.
-            k: Number of chunks to retrieve.
-
-        Returns:
-            List of retrieved text chunks.
-        """
         response = self.index.similarity_search(
             query_vector=query_embedding,
             columns=["text"],
             num_results=k,
         )
-
-        # Databricks returns rows as arrays aligned with `columns`
         return [
-            row[0]
-            for row in response["result"]["data_array"]
+            row[0] for row in response["result"]["data_array"]
             if row and row[0]
         ]
 
     # ------------------------------------------------------------------
-    # Context construction
+    # Context building
     # ------------------------------------------------------------------
-
     def build_cited_context(
         self,
         results: List[str],
         country: Optional[str] = None,
     ) -> Tuple[str, List[Dict[str, Any]]]:
-        """
-        Build a filtered context string and citation metadata.
 
-        Args:
-            results: Retrieved text chunks.
-            country: Optional country name to filter relevant lines.
-
-        Returns:
-            Tuple of:
-                - Combined context string
-                - List of citation dictionaries
-        """
         context_lines: List[str] = []
         citations: List[Dict[str, Any]] = []
 
         for idx, text in enumerate(results):
-            text = str(text).strip()
-            if not text:
-                continue
-
-            lines = [line.strip() for line in text.split("\n") if line.strip()]
-            relevant_lines: List[str] = []
+            lines = [l.strip() for l in str(text).split("\n") if l.strip()]
+            filtered: List[str] = []
 
             for line in lines:
                 if country:
                     if country.lower() in line.lower() or line.startswith("•"):
-                        relevant_lines.append(line)
+                        filtered.append(line)
                 else:
-                    relevant_lines.append(line)
+                    filtered.append(line)
 
-            if not relevant_lines:
+            if not filtered:
                 continue
 
-            context_lines.extend(relevant_lines)
-            citations.append(
-                {
-                    "id": idx + 1,
-                    "text": "\n".join(relevant_lines),
-                }
-            )
+            context_lines.extend(filtered)
+            citations.append({
+                "id": idx + 1,
+                "text": "\n".join(filtered),
+            })
 
         return "\n".join(context_lines), citations
 
     # ------------------------------------------------------------------
     # RAG inference
     # ------------------------------------------------------------------
-
     def ask_pdf(
         self,
         query_embedding: List[float],
         question: str,
         k: int = 2,
     ) -> Dict[str, Any]:
-        """
-        Perform retrieval-augmented generation over the PDF.
 
-        Args:
-            query_embedding: Precomputed query embedding.
-            question: User question.
-            k: Number of retrieved chunks.
-
-        Returns:
-            Dictionary with:
-                - "answer": Generated answer
-                - "citations": List of citation metadata
-        """
-        country_in_question: Optional[str] = next(
+        country = next(
             (c for c in self.COUNTRY_LIST if c.lower() in question.lower()),
             None,
         )
 
-        results = self.retrieve_context(query_embedding, k=k)
-        context, citations = self.build_cited_context(
-            results,
-            country=country_in_question,
-        )
+        results = self.retrieve_context(query_embedding, k)
+        context, citations = self.build_cited_context(results, country)
 
         system_prompt = (
             "You are a helpful assistant that answers questions using ONLY "
             "the provided context. "
-            "If the country is present, list all relevant breeds naturally. "
             "If the country is not found, respond exactly:\n"
             "'I could not find this information in the provided document, so I can't answer!'\n"
-            "Preserve chunk-level citations."
         )
 
         user_prompt = f"""
-                Context:
-                {context}
+Context:
+{context}
 
-                Question:
-                {question}
+Question:
+{question}
 
-                Answer:
-            """
+Answer:
+"""
 
         response = self.client.chat.completions.create(
             model=self.model_name,
@@ -283,6 +256,46 @@ class PDFRAGModel:
             "answer": response.choices[0].message.content.strip(),
             "citations": citations,
         }
+
+    # ------------------------------------------------------------------
+    # MLflow registration (FIXED)
+    # ------------------------------------------------------------------
+    def register_model(
+        self,
+        model_name: str,
+        experiment_name: str = "/Shared/pdf_rag_experiment",
+    ) -> None:
+
+        if mlflow.get_experiment_by_name(experiment_name) is None:
+            mlflow.create_experiment(experiment_name)
+        mlflow.set_experiment(experiment_name)
+
+        input_schema = Schema([
+            ColSpec(DataType.string, "question"),
+            ColSpec(DataType.string, "query_embedding"),
+        ])
+        output_schema = Schema([
+            ColSpec(DataType.string, "answer"),
+            ColSpec(DataType.string, "citations"),
+        ])
+
+        signature = ModelSignature(inputs=input_schema, outputs=output_schema)
+
+        # Save ONLY config (never pickle clients)
+        with open("model_config.json", "w") as f:
+            json.dump(self.to_config(), f)
+
+        mlflow.pyfunc.log_model(
+            python_model=PDFRAGWrapper(),
+            artifact_path=f"{model_name}_pyfunc",
+            registered_model_name=model_name,
+            signature=signature,
+            artifacts={
+                "model_config": "model_config.json"
+            },
+        )
+
+
 
     '''
     # ------------------------------------------------------------------
@@ -363,45 +376,3 @@ class PDFRAGModel:
             signature=signature,
         )
     '''
-    
-    # ------------------------------------------------------------------
-    # MLflow registration
-    # ------------------------------------------------------------------
-    def register_model(
-        self,
-        model_name: str,
-        experiment_name: str = "/Shared/pdf_rag_experiment",
-    ) -> None:
-        """
-        Register this PDF RAG model in Databricks Model Registry.
-        """
-
-        if mlflow.get_experiment_by_name(experiment_name) is None:
-            mlflow.create_experiment(experiment_name)
-        mlflow.set_experiment(experiment_name)
-
-        input_schema = Schema([
-            ColSpec(DataType.string, "question"),
-            ColSpec(DataType.string, "query_embedding"),
-        ])
-        output_schema = Schema([
-            ColSpec(DataType.string, "answer"),
-            ColSpec(DataType.string, "citations"),
-        ])
-        signature = ModelSignature(inputs=input_schema, outputs=output_schema)
-
-        # -----------------------------
-        # Serialize PDFRAGModel safely
-        # -----------------------------
-        with open("pdf_rag_model.pkl", "wb") as f:
-            cloudpickle.dump(self, f)
-
-        mlflow.pyfunc.log_model(
-            python_model=PDFRAGWrapper(),
-            artifact_path=f"{model_name}_pyfunc",
-            registered_model_name=model_name,
-            signature=signature,
-            artifacts={
-                "pdf_rag_model": "pdf_rag_model.pkl"
-            },
-        )
