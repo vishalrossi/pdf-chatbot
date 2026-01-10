@@ -68,7 +68,7 @@ def load_environment() -> None:
     os.environ["OPENAI_API_KEY"] = api_key
 '''
 
-load_environment()
+load_environment(env_path="/Workspace/vishal/pdf-chatbot/.env")
 
 
 ENV = os.getenv("DATABRICKS_BUNDLE_TARGET", "dev")
