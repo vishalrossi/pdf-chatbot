@@ -46,6 +46,7 @@ from mlflow.types import DataType, Schema, ColSpec
 import json
 import os
 from typing import List, Dict, Tuple, Optional, Any
+import cloudpickle
 
 
 # ----------------------------------------------------------------------
@@ -54,34 +55,17 @@ from typing import List, Dict, Tuple, Optional, Any
 class PDFRAGWrapper(pyfunc.PythonModel):
     """
     MLflow PyFunc wrapper for PDFRAGModel.
-
-    This wrapper allows a PDFRAGModel instance to be registered
-    and served via MLflow Model Registry.
     """
 
-    def load_context(self, context: dict) -> None:
+    def load_context(self, context) -> None:
         """
-        Load the PDFRAGModel instance into the wrapper.
-
-        Args:
-            context: Dictionary containing 'pdf_rag_instance'
+        Load the serialized PDFRAGModel from artifacts.
         """
-        self.pdf_rag: PDFRAGModel = context["pdf_rag_instance"]
+        model_path = context.artifacts["pdf_rag_model"]
+        with open(model_path, "rb") as f:
+            self.pdf_rag = cloudpickle.load(f)
 
     def predict(self, context, model_input: dict) -> dict:
-        """
-        Predict using PDFRAGModel.
-
-        Args:
-            model_input: Dictionary with keys:
-                - question (str)
-                - query_embedding (JSON string)
-
-        Returns:
-            Dictionary with keys:
-                - answer (str)
-                - citations (JSON string)
-        """
         query_embedding = json.loads(model_input["query_embedding"])
         result = self.pdf_rag.ask_pdf(
             query_embedding=query_embedding,
@@ -89,7 +73,6 @@ class PDFRAGWrapper(pyfunc.PythonModel):
         )
         result["citations"] = json.dumps(result.get("citations", []))
         return result
-
 
 # ----------------------------------------------------------------------
 # Main PDF RAG Model
@@ -392,6 +375,7 @@ class PDFRAGModel:
         """
         Register this PDF RAG model in Databricks Model Registry.
         """
+
         if mlflow.get_experiment_by_name(experiment_name) is None:
             mlflow.create_experiment(experiment_name)
         mlflow.set_experiment(experiment_name)
@@ -406,11 +390,18 @@ class PDFRAGModel:
         ])
         signature = ModelSignature(inputs=input_schema, outputs=output_schema)
 
-        # Use top-level wrapper and pass the PDFRAGModel instance
+        # -----------------------------
+        # Serialize PDFRAGModel safely
+        # -----------------------------
+        with open("pdf_rag_model.pkl", "wb") as f:
+            cloudpickle.dump(self, f)
+
         mlflow.pyfunc.log_model(
             python_model=PDFRAGWrapper(),
             artifact_path=f"{model_name}_pyfunc",
             registered_model_name=model_name,
             signature=signature,
-            python_model_context={"pdf_rag_instance": self}  # <-- pass self
+            artifacts={
+                "pdf_rag_model": "pdf_rag_model.pkl"
+            },
         )
