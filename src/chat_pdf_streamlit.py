@@ -14,15 +14,6 @@ import streamlit as st
 from dotenv import load_dotenv
 from langchain_openai import OpenAIEmbeddings
 
-print("DEBUG: __file__ =", globals().get("__file__"))
-print("DEBUG: os.getcwd() =", os.getcwd())
-
-st.write("DEBUG (Streamlit): __file__ =", globals().get("__file__"))
-st.write("DEBUG (Streamlit): os.getcwd() =", os.getcwd())
-
-#from model import PDFRAGModel
-
-
 # ------------------------------------------------------------------
 # Environment & config
 # ------------------------------------------------------------------
@@ -35,7 +26,6 @@ def load_environment() -> None:
     """
 
     cwd = os.getcwd()
-    st.write("DEBUG: cwd =", cwd)
 
     candidate_paths = [
         os.path.join(cwd, ".env"),                              # local
@@ -45,9 +35,6 @@ def load_environment() -> None:
 
     env_path = next((p for p in candidate_paths if os.path.exists(p)), None)
 
-    st.write("DEBUG: candidate .env paths:", candidate_paths)
-    st.write("DEBUG: selected .env path:", env_path)
-
     if not env_path:
         st.error("Could not find .env file in expected locations")
         st.stop()
@@ -55,7 +42,6 @@ def load_environment() -> None:
     load_dotenv(env_path, override=True)
 
     api_key = os.getenv("OPENAI_API_KEY")
-    st.write("DEBUG: OPENAI_API_KEY loaded:", bool(api_key))
 
     if not api_key:
         st.error("OPENAI_API_KEY is not set in .env")
@@ -66,7 +52,6 @@ def load_environment() -> None:
 
 
 load_environment()
-st.write(f"OPENAI_API_KEY loaded? {bool(os.getenv('OPENAI_API_KEY'))}")
 
 ENV = os.getenv("DATABRICKS_BUNDLE_TARGET", "dev")
 
