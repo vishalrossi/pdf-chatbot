@@ -14,7 +14,7 @@ import streamlit as st
 from dotenv import load_dotenv
 from langchain_openai import OpenAIEmbeddings
 
-from model import PDFRAGModel
+#from model import PDFRAGModel
 
 
 # ------------------------------------------------------------------
