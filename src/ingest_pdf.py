@@ -42,6 +42,9 @@ ENDPOINT_NAME = f"pdf_chatbot_endpoint_{ENV}"
 TABLE_NAME = f"pdf_chatbot_embeddings_{ENV}"
 SOURCE_TABLE_NAME = f"{CATALOG}.{SCHEMA}.pdf_chatbot_embeddings_{ENV}"
 
+# Base index name (used to generate timestamped index)
+BASE_INDEX_NAME = f"{CATALOG}.{SCHEMA}.pdf_chatbot_{ENV}"
+
 EMBEDDING_MODEL = "text-embedding-3-small"
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 50
@@ -164,8 +167,14 @@ def main():
     # 5️⃣ Initialize Vector Search
     client = initialize_vector_search(ENDPOINT_NAME)
 
-    # 6️⃣ Create Vector Search index with timestamp to avoid collisions
-    index_name = create_or_sync_index_with_timestamp(client, ENDPOINT_NAME, INDEX_NAME, SOURCE_TABLE_NAME, embeddings)
+    # 6️⃣ Create Vector Search index with timestamp
+    index_name = create_or_sync_index_with_timestamp(
+        client,
+        ENDPOINT_NAME,
+        BASE_INDEX_NAME,   # pass the base name
+        SOURCE_TABLE_NAME,
+        embeddings
+    )
     print(f"Final index created: {index_name}")
 
 
