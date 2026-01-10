@@ -48,6 +48,52 @@ import os
 from typing import List, Dict, Tuple, Optional, Any
 
 
+# ----------------------------------------------------------------------
+# MLflow PyFunc wrapper (top-level for serialization)
+# ----------------------------------------------------------------------
+class PDFRAGWrapper(pyfunc.PythonModel):
+    """
+    MLflow PyFunc wrapper for PDFRAGModel.
+
+    This wrapper allows a PDFRAGModel instance to be registered
+    and served via MLflow Model Registry.
+    """
+
+    def load_context(self, context: dict) -> None:
+        """
+        Load the PDFRAGModel instance into the wrapper.
+
+        Args:
+            context: Dictionary containing 'pdf_rag_instance'
+        """
+        self.pdf_rag: PDFRAGModel = context["pdf_rag_instance"]
+
+    def predict(self, context, model_input: dict) -> dict:
+        """
+        Predict using PDFRAGModel.
+
+        Args:
+            model_input: Dictionary with keys:
+                - question (str)
+                - query_embedding (JSON string)
+
+        Returns:
+            Dictionary with keys:
+                - answer (str)
+                - citations (JSON string)
+        """
+        query_embedding = json.loads(model_input["query_embedding"])
+        result = self.pdf_rag.ask_pdf(
+            query_embedding=query_embedding,
+            question=model_input["question"]
+        )
+        result["citations"] = json.dumps(result.get("citations", []))
+        return result
+
+
+# ----------------------------------------------------------------------
+# Main PDF RAG Model
+# ----------------------------------------------------------------------
 class PDFRAGModel:
     """
     Retrieval-Augmented Generation (RAG) model over PDF content.
@@ -255,6 +301,7 @@ class PDFRAGModel:
             "citations": citations,
         }
 
+    '''
     # ------------------------------------------------------------------
     # MLflow registration
     # ------------------------------------------------------------------
@@ -331,4 +378,39 @@ class PDFRAGModel:
             artifact_path=f"{model_name}_pyfunc",
             registered_model_name=model_name,
             signature=signature,
+        )
+    '''
+    
+    # ------------------------------------------------------------------
+    # MLflow registration
+    # ------------------------------------------------------------------
+    def register_model(
+        self,
+        model_name: str,
+        experiment_name: str = "/Shared/pdf_rag_experiment",
+    ) -> None:
+        """
+        Register this PDF RAG model in Databricks Model Registry.
+        """
+        if mlflow.get_experiment_by_name(experiment_name) is None:
+            mlflow.create_experiment(experiment_name)
+        mlflow.set_experiment(experiment_name)
+
+        input_schema = Schema([
+            ColSpec(DataType.string, "question"),
+            ColSpec(DataType.string, "query_embedding"),
+        ])
+        output_schema = Schema([
+            ColSpec(DataType.string, "answer"),
+            ColSpec(DataType.string, "citations"),
+        ])
+        signature = ModelSignature(inputs=input_schema, outputs=output_schema)
+
+        # Use top-level wrapper and pass the PDFRAGModel instance
+        mlflow.pyfunc.log_model(
+            python_model=PDFRAGWrapper(),
+            artifact_path=f"{model_name}_pyfunc",
+            registered_model_name=model_name,
+            signature=signature,
+            python_model_context={"pdf_rag_instance": self}  # <-- pass self
         )
