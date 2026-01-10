@@ -21,6 +21,7 @@ from langchain_openai import OpenAIEmbeddings
 # Environment & config
 # ------------------------------------------------------------------
 
+'''
 def load_environment(env_path: str) -> None:
     """
     Load environment variables from the given .env file.
@@ -37,10 +38,41 @@ def load_environment(env_path: str) -> None:
 
     # CRITICAL: make it explicit
     os.environ["OPENAI_API_KEY"] = api_key
-
-
+    
 load_environment(env_path="/Workspace/vishal/pdf-chatbot/.env")
+'''
+
+def load_environment() -> None:
+    """
+    Load environment variables from .env for Streamlit.
+    """
+
+    # Resolve project root safely for Streamlit
+    if "__file__" in globals():
+        project_root = Path(__file__).resolve().parents[1]
+    else:
+        project_root = Path(os.getcwd()).resolve()
+
+    env_path = project_root / ".env"
+
+    if not env_path.exists():
+        st.error(f".env file not found at {env_path}")
+        st.stop()
+
+    load_dotenv(dotenv_path=env_path, override=True)
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        st.error("OPENAI_API_KEY is not set in .env")
+        st.stop()
+
+    # Make sure cached resources see it
+    os.environ["OPENAI_API_KEY"] = api_key
+
+
+load_environment()
 st.write(f"OPENAI_API_KEY loaded? {bool(os.getenv('OPENAI_API_KEY'))}")
+
 #os.environ["OPENAI_API_KEY"]
 #os.getenv("OPENAI_API_KEY")
 
