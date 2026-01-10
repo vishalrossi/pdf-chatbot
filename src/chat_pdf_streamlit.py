@@ -21,6 +21,25 @@ from langchain_openai import OpenAIEmbeddings
 # Environment & config
 # ------------------------------------------------------------------
 
+def load_environment(env_path: str) -> None:
+    """
+    Load environment variables from the given .env file.
+
+    Args:
+        env_path: Absolute path to the .env file.
+    """
+    load_dotenv(dotenv_path=env_path, override=True)
+    
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        st.error("OPENAI_API_KEY is not set")
+        st.stop()
+
+    # CRITICAL: make it explicit
+    os.environ["OPENAI_API_KEY"] = api_key
+    
+    
+'''
 def load_environment() -> None:
     """
     Load environment variables from .env at project root.
@@ -47,7 +66,7 @@ def load_environment() -> None:
 
     # CRITICAL: make it explicit
     os.environ["OPENAI_API_KEY"] = api_key
-
+'''
 
 load_environment()
 
