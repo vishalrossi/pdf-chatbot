@@ -69,7 +69,11 @@ def get_embeddings() -> OpenAIEmbeddings:
     Returns:
         OpenAIEmbeddings: An instance of the embeddings model.
     """
-    return OpenAIEmbeddings(model=EMBEDDING_MODEL)
+    
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY not set")
+    return OpenAIEmbeddings(model=EMBEDDING_MODEL, api_key=api_key,)
 
 
 @st.cache_resource(show_spinner=False)
