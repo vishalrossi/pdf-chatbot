@@ -14,6 +14,12 @@ import streamlit as st
 from dotenv import load_dotenv
 from langchain_openai import OpenAIEmbeddings
 
+print("DEBUG: __file__ =", globals().get("__file__"))
+print("DEBUG: os.getcwd() =", os.getcwd())
+
+st.write("DEBUG (Streamlit): __file__ =", globals().get("__file__"))
+st.write("DEBUG (Streamlit): os.getcwd() =", os.getcwd())
+
 #from model import PDFRAGModel
 
 
@@ -44,39 +50,24 @@ load_environment(env_path="/Workspace/vishal/pdf-chatbot/.env")
 
 def load_environment() -> None:
     """
-    Load environment variables from .env for Streamlit.
+    Load OPENAI_API_KEY safely for Streamlit.
     """
 
-    # Resolve project root safely for Streamlit
-    file_path = globals().get("__file__")
+    # Explicit path — works in Databricks + Streamlit
+    env_path = ".env"
 
-    if isinstance(file_path, str):
-        project_root = Path(file_path).resolve().parents[1]
-        source = "__file__"
-    else:
-        project_root = Path(os.getcwd()).resolve()
-        source = "os.getcwd()"
-
-    env_path = project_root / ".env"
-    
-    st.write("🔍 ENV DEBUG")
-    st.write("Source for project root:", source)
-    st.write("Resolved project root:", project_root)
-    st.write(".env path:", env_path)
-    st.write(".env exists:", env_path.exists())
-
-    if not env_path.exists():
+    if not os.path.exists(env_path):
         st.error(f".env file not found at {env_path}")
         st.stop()
 
-    load_dotenv(dotenv_path=str(env_path), override=True)
+    from dotenv import load_dotenv
+    load_dotenv(env_path, override=True)
 
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        st.error("OPENAI_API_KEY is not set in .env")
+        st.error("OPENAI_API_KEY is not set")
         st.stop()
 
-    # Make sure cached resources see it
     os.environ["OPENAI_API_KEY"] = api_key
 
 
