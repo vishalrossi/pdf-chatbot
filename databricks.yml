@@ -112,7 +112,6 @@ resources:
           spark_python_task:
             python_file: src/evaluate.py
 
-
     # ================================================================
     # PDF CHAT APP (on-demand / interactive)
     # ================================================================
