@@ -50,16 +50,24 @@ def load_environment() -> None:
     # Resolve project root safely for Streamlit
     if "__file__" in globals():
         project_root = Path(__file__).resolve().parents[1]
+        source = "__file__"
     else:
         project_root = Path(os.getcwd()).resolve()
+        source = "os.getcwd()"
 
     env_path = project_root / ".env"
+    
+    st.write("🔍 ENV DEBUG")
+    st.write("Source for project root:", source)
+    st.write("Resolved project root:", project_root)
+    st.write(".env path:", env_path)
+    st.write(".env exists:", env_path.exists())
 
     if not env_path.exists():
         st.error(f".env file not found at {env_path}")
         st.stop()
 
-    load_dotenv(dotenv_path=env_path, override=True)
+    load_dotenv(dotenv_path=str(env_path), override=True)
 
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
