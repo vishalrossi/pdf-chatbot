@@ -80,9 +80,11 @@ resources:
         - task_key: storage_init
           job_cluster_key: pipeline_cluster
           spark_python_task:
-            #python_file: src/utils/storage.py
+            python_file: src/utils/storage.py
 
         - task_key: pdf_ingestion
+          depends_on:
+            - task_key: storage_init
           job_cluster_key: pipeline_cluster
           libraries: *common-libs
           spark_python_task:
