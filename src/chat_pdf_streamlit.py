@@ -36,7 +36,7 @@ def load_environment() -> None:
 
 load_environment()
 
-#API_KEY = os.environ.get("OPENAI_API_KEY")
+API_KEY = os.environ.get("OPENAI_API_KEY")
 
 if not os.getenv("OPENAI_API_KEY"):
     st.error("OPENAI_API_KEY is not set")
@@ -54,6 +54,8 @@ COUNTRY_CSV_PATH = (
     "/Volumes/databricks_vishal/chatbot/rag_data/pdf/extracted_countries.csv"
 )
 
+
+from model import PDFRAGModel
 
 # ------------------------------------------------------------------
 # Cached initialization (VERY important for Streamlit)
