@@ -27,65 +27,46 @@ st.write("DEBUG (Streamlit): os.getcwd() =", os.getcwd())
 # Environment & config
 # ------------------------------------------------------------------
 
-'''
-def load_environment(env_path: str) -> None:
-    """
-    Load environment variables from the given .env file.
-
-    Args:
-        env_path: Absolute path to the .env file.
-    """
-    load_dotenv(dotenv_path=env_path, override=True)
-    
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        st.error("OPENAI_API_KEY is not set")
-        st.stop()
-
-    # CRITICAL: make it explicit
-    os.environ["OPENAI_API_KEY"] = api_key
-    
-load_environment(env_path="/Workspace/vishal/pdf-chatbot/.env")
-'''
-
 def load_environment() -> None:
     """
-    Load OPENAI_API_KEY for Streamlit using cwd-based resolution.
+    Load OPENAI_API_KEY from .env in a way that works for:
+    - Local Streamlit
+    - Databricks Streamlit
     """
 
     cwd = os.getcwd()
     st.write("DEBUG: cwd =", cwd)
 
-    # Move up from /files/src → project root
-    project_root = os.path.dirname(os.path.dirname(cwd))
-    env_path = os.path.join(project_root, ".env")
+    candidate_paths = [
+        os.path.join(cwd, ".env"),                              # local
+        os.path.join(cwd, "..", ".env"),                        # one level up
+        os.path.join(cwd, "..", "..", ".env"),                  # Databricks
+    ]
 
-    st.write("DEBUG: project_root =", project_root)
-    st.write("DEBUG: .env path =", env_path)
-    st.write("DEBUG: .env exists =", os.path.exists(env_path))
+    env_path = next((p for p in candidate_paths if os.path.exists(p)), None)
 
-    if not os.path.exists(env_path):
-        st.error(f".env file not found at {env_path}")
+    st.write("DEBUG: candidate .env paths:", candidate_paths)
+    st.write("DEBUG: selected .env path:", env_path)
+
+    if not env_path:
+        st.error("Could not find .env file in expected locations")
         st.stop()
 
     load_dotenv(env_path, override=True)
 
     api_key = os.getenv("OPENAI_API_KEY")
-    st.write("DEBUG: OPENAI_API_KEY loaded =", bool(api_key))
+    st.write("DEBUG: OPENAI_API_KEY loaded:", bool(api_key))
 
     if not api_key:
         st.error("OPENAI_API_KEY is not set in .env")
         st.stop()
 
-    # Ensure cached resources can access it
+    # Ensure cached resources see it
     os.environ["OPENAI_API_KEY"] = api_key
 
 
 load_environment()
 st.write(f"OPENAI_API_KEY loaded? {bool(os.getenv('OPENAI_API_KEY'))}")
-
-#os.environ["OPENAI_API_KEY"]
-#os.getenv("OPENAI_API_KEY")
 
 ENV = os.getenv("DATABRICKS_BUNDLE_TARGET", "dev")
 
