@@ -13,18 +13,15 @@ Safe for repeated runs and production deployment.
 """
 
 import os
-from datetime import datetime
 from typing import List, Tuple
-
-import pandas as pd
 from pyspark.sql import SparkSession
 from dotenv import load_dotenv
+import pandas as pd
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from databricks.vector_search.client import VectorSearchClient
-
 from utils.storage import BASE_VOLUME_PATH
 
 
@@ -36,11 +33,11 @@ load_dotenv(dotenv_path=ENV_PATH, override=True)
 
 API_KEY = os.getenv("OPENAI_API_KEY")
 if not API_KEY:
-    raise RuntimeError("OPENAI_API_KEY is not set")
+    raise RuntimeError("OPENAI_API_KEY is not set in environment variables")
 
 ENV = os.getenv("DATABRICKS_BUNDLE_TARGET", "dev")
-
 PDF_PATH = f"{BASE_VOLUME_PATH}/pdf/About_Dogs.pdf"
+
 CATALOG = "databricks_vishal"
 SCHEMA = "default"
 ENDPOINT_NAME = f"pdf_chatbot_endpoint_{ENV}"
@@ -75,32 +72,12 @@ def load_pdf_pages(pdf_path: str) -> List:
 
 
 def select_pages(docs: List, start: int, end: int) -> List:
-    """
-    Select relevant pages from PDF.
-
-    Args:
-        docs: List of document pages.
-        start: Start page (inclusive, 0-indexed).
-        end: End page (exclusive).
-
-    Returns:
-        List of selected pages.
-    """
+    """Select relevant pages."""
     return docs[start:end]
 
 
 def chunk_documents(docs: List, chunk_size: int, chunk_overlap: int) -> List:
-    """
-    Split documents into chunks.
-
-    Args:
-        docs: List of document pages.
-        chunk_size: Maximum chunk size.
-        chunk_overlap: Overlap between chunks.
-
-    Returns:
-        List of chunked documents.
-    """
+    """Split pages into chunks."""
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
@@ -113,20 +90,15 @@ def chunk_documents(docs: List, chunk_size: int, chunk_overlap: int) -> List:
 
 def generate_embeddings_safe(chunks: List, model: str, api_key: str) -> Tuple[List[List[float]], List[str]]:
     """
-    Generate embeddings for chunks, ensuring a 2D list.
-
-    Args:
-        chunks: List of chunk documents.
-        model: OpenAI embedding model name.
-        api_key: OpenAI API key.
+    Generate embeddings safely as a 2D list.
 
     Returns:
-        Tuple of embeddings (2D list) and chunk texts.
+        Tuple of embeddings and corresponding chunk texts.
     """
     texts = [c.page_content for c in chunks]
     embeddings_raw = OpenAIEmbeddings(model=model, api_key=api_key).embed_documents(texts)
 
-    # Wrap single embedding into a list if needed
+    # Wrap single embedding in list if needed
     if len(texts) == 1 and isinstance(embeddings_raw[0], float):
         embeddings = [embeddings_raw]
     else:
@@ -138,13 +110,7 @@ def generate_embeddings_safe(chunks: List, model: str, api_key: str) -> Tuple[Li
 
 def initialize_vector_search(endpoint_name: str) -> VectorSearchClient:
     """
-    Initialize Databricks Vector Search client and ensure endpoint exists.
-
-    Args:
-        endpoint_name: Name of the vector search endpoint.
-
-    Returns:
-        VectorSearchClient instance.
+    Initialize Vector Search client and ensure endpoint exists.
     """
     client = VectorSearchClient()
     endpoints = [e["name"] for e in client.list_endpoints().get("endpoints", [])]
@@ -157,15 +123,7 @@ def initialize_vector_search(endpoint_name: str) -> VectorSearchClient:
 
 
 def save_to_delta(texts: List[str], embeddings: List[List[float]], spark: SparkSession, table_name: str) -> None:
-    """
-    Save chunks and embeddings to a Delta table.
-
-    Args:
-        texts: List of chunk texts.
-        embeddings: Corresponding embeddings.
-        spark: SparkSession instance.
-        table_name: Name of Delta table.
-    """
+    """Save chunks and embeddings to a Delta table."""
     df = pd.DataFrame({
         "id": range(len(texts)),
         "text": texts,
@@ -181,15 +139,11 @@ def create_or_sync_index_safe(client: VectorSearchClient, endpoint_name: str, in
     """
     Create or sync a Vector Search index safely.
 
-    Args:
-        client: VectorSearchClient instance.
-        endpoint_name: Name of the endpoint.
-        index_name: Fully qualified index name.
-        source_table_name: Delta table to index.
-        embeddings: List of embeddings (2D list).
+    Uses positional argument for endpoint_name to match SDK requirements.
     """
-    # Provide endpoint_name explicitly
-    existing_indexes = [i["name"] for i in client.list_indexes(endpoint_name=endpoint_name).get("indexes", [])]
+    # list_indexes expects endpoint_name as positional argument
+    existing_indexes_resp = client.list_indexes(endpoint_name)
+    existing_indexes = [i["name"] for i in existing_indexes_resp.get("indexes", [])]
 
     if index_name in existing_indexes:
         print(f"Index '{index_name}' already exists. Skipping creation.")
@@ -212,24 +166,15 @@ def create_or_sync_index_safe(client: VectorSearchClient, endpoint_name: str, in
 # Main pipeline
 # -----------------------------
 def main():
-    # 1️⃣ Load PDF pages
     docs = load_pdf_pages(PDF_PATH)
     selected_pages = select_pages(docs, PAGE_START, PAGE_END)
-
-    # 2️⃣ Split pages into chunks
     chunks = chunk_documents(selected_pages, CHUNK_SIZE, CHUNK_OVERLAP)
-
-    # 3️⃣ Generate embeddings safely
     embeddings, texts = generate_embeddings_safe(chunks, EMBEDDING_MODEL, API_KEY)
 
-    # 4️⃣ Initialize Vector Search client
-    client = initialize_vector_search(ENDPOINT_NAME)
-
-    # 5️⃣ Save to Delta
     spark = SparkSession.builder.getOrCreate()
     save_to_delta(texts, embeddings, spark, TABLE_NAME)
 
-    # 6️⃣ Create or sync index
+    client = initialize_vector_search(ENDPOINT_NAME)
     create_or_sync_index_safe(client, ENDPOINT_NAME, INDEX_NAME, SOURCE_TABLE_NAME, embeddings)
 
 
