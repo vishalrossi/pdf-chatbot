@@ -186,7 +186,7 @@ class PDFRAGModel:
 
     #COUNTRY_LIST = input_counties_df["Country"].dropna().tolist()
     
-    '''
+
     # List of countries appearing in your PDF
     COUNTRY_LIST = [
         "Australia", "Brazil", "Canada", "China", "Czech Republic",
@@ -195,7 +195,7 @@ class PDFRAGModel:
         "South Africa", "Spain", "Sweden", "Thailand", "Turkey", 
         "United Kingdom", "United States", "Zimbabwe"
         ]
-    '''
+
     
     def __init__(self, index_name: str, endpoint_name: str, model_name= "gpt-4o-mini"):
         """
@@ -304,7 +304,6 @@ class PDFRAGModel:
         context = "\n".join(context_lines)
         return context, citations
 
-    '''
     def ask_pdf(self, query_embedding, question, k=2):
         """
         Perform similarity search + LLM completion with country filtering.
@@ -359,8 +358,8 @@ class PDFRAGModel:
             "answer": response.choices[0].message.content.strip(),
             "citations": citations
         }
-    '''
 
+    '''
     def ask_pdf(self, query_embedding: List[float], question: str, k: int = 2) -> Dict[str, Any]:
         country = self._detect_country(question, self.COUNTRY_LIST)
         chunks = self.retrieve_context(query_embedding, k=k)
@@ -386,7 +385,7 @@ class PDFRAGModel:
             temperature=0,
         )
         return {"answer": response.choices[0].message.content.strip(), "citations": citations}
-
+    '''
     # -----------------------------
     # 5️⃣ Register model in Databricks
     # -----------------------------
