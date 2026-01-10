@@ -116,6 +116,8 @@ class PDFRAGModel:
         endpoint_name: str,
         model_name: str = "gpt-4o-mini",
     ) -> None:
+
+        api_key = os.getenv("OPENAI_API_KEY")
         if not os.getenv("OPENAI_API_KEY"):
             raise RuntimeError("OPENAI_API_KEY must be set")
 
