@@ -48,76 +48,80 @@ x-libraries: &common-libs
   - pypi:
       package: regex
 
+# ---------------------------------------------------------------------
+# Reusable YAML anchors
+# ---------------------------------------------------------------------
+
+x-spark-version: &spark_version 14.3.x-scala2.12
+x-small-node: &small_node Standard_DS3_v2
+
+# ---------------------------------------------------------------------
+# Resources
+# ---------------------------------------------------------------------
+
 resources:
   jobs:
 
-    storage_init:
-      name: vishal-storage-init-${bundle.target}
-      tasks:
-        - task_key: init_storage
-          new_cluster:
-            spark_version: 14.3.x-scala2.12
-            node_type_id: Standard_DS3_v2
-            num_workers: 1
-          spark_python_task:
-            python_file: src/utils/storage.py
+    # ================================================================
+    # RAG PIPELINE (end-to-end)
+    # ================================================================
+    rag_pipeline:
+      name: vishal-rag-pipeline-${bundle.target}
 
-    pdf_ingestion:
-      name: vishal-pdf-ingestion-${bundle.target}
-      tasks:
-        - task_key: ingest_pdf
+      # Shared cluster for sequential tasks
+      job_clusters:
+        - job_cluster_key: pipeline_cluster
           new_cluster:
-            spark_version: 14.3.x-scala2.12
-            node_type_id: Standard_DS3_v2
+            spark_version: *spark_version
+            node_type_id: *small_node
             num_workers: 1
+
+      tasks:
+        - task_key: storage_init
+          job_cluster_key: pipeline_cluster
+          spark_python_task:
+            #python_file: src/utils/storage.py
+
+        - task_key: pdf_ingestion
+          job_cluster_key: pipeline_cluster
           libraries: *common-libs
           spark_python_task:
             python_file: src/ingest_pdf.py
 
-    get_country_names:
-      name: vishal-storage-init-${bundle.target}
-      tasks:
-        - task_key: country_names
-          new_cluster:
-            spark_version: 14.3.x-scala2.12
-            node_type_id: Standard_DS3_v2
-            num_workers: 1
+        - task_key: get_country_names
+          depends_on:
+            - task_key: pdf_ingestion
+          job_cluster_key: pipeline_cluster
           libraries: *common-libs
           spark_python_task:
             python_file: src/get_names.py
 
-    register_model:
-      name: pdf-register-model-${bundle.target}
-      tasks:
-        - task_key: register_rag_model
-          new_cluster:
-            spark_version: 14.3.x-scala2.12
-            node_type_id: Standard_DS3_v2
-            num_workers: 1
+        - task_key: register_model
+          depends_on:
+            - task_key: get_country_names
+          job_cluster_key: pipeline_cluster
           libraries: *common-libs
           spark_python_task:
             python_file: src/register_model.py
 
-    pdf_chat:
-      name: vishal-pdf-chat-${bundle.target}
-      tasks:
-        - task_key: run_pdf_chat
-          new_cluster:
-            spark_version: 14.3.x-scala2.12
-            node_type_id: Standard_DS3_v2
-            num_workers: 1
-          libraries: *common-libs
-          spark_python_task:
-            python_file: src/chat_pdf_streamlit.py
-
-    evaluate:
-      name: vishal-pdf-chat-${bundle.target}
-      tasks:
-        - task_key: evaluate_llm
-          new_cluster:
-            spark_version: 14.3.x-scala2.12
-            node_type_id: Standard_DS3_v2
-            num_workers: 1
+        - task_key: evaluate
+          depends_on:
+            - task_key: register_model
+          job_cluster_key: pipeline_cluster
           libraries: *common-libs
           spark_python_task:
             python_file: src/evaluate.py
+
+
+    # ================================================================
+    # PDF CHAT APP (on-demand / interactive)
+    # ================================================================
+    pdf_chat:
+        name: vishal-pdf-chat-${bundle.target}
+
+        job_clusters:
+          - job_cluster_key: chat_cluster
+            new_cluster:
+              spark_version: *spark_version
+              node_type_id: *small_node
+              num_workers: 1
