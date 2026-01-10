@@ -355,7 +355,6 @@ class PDFRAGModel:
 
     COUNTRY_LIST = input_counties_df["Country"].dropna().tolist()
     
-    '''
     # List of countries appearing in your PDF
     COUNTRY_LIST = [
         "Australia", "Brazil", "Canada", "China", "Czech Republic",
@@ -364,7 +363,6 @@ class PDFRAGModel:
         "South Africa", "Spain", "Sweden", "Thailand", "Turkey", 
         "United Kingdom", "United States", "Zimbabwe"
         ]
-    '''
     
     def __init__(self, index_name, endpoint_name, model_name= "gpt-4o-mini"):
         if not os.getenv("OPENAI_API_KEY"):
