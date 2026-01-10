@@ -106,7 +106,7 @@ resources:
 
         - task_key: evaluate
           depends_on:
-            - task_key: rag and register_model
+            - task_key: rag-register_model
           job_cluster_key: pipeline_cluster
           libraries: *common-libs
           spark_python_task:
