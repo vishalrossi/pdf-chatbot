@@ -40,8 +40,9 @@ def load_environment(env_path: str) -> None:
 
 
 load_environment(env_path="/Workspace/vishal/pdf-chatbot/.env")
+st.write(f"OPENAI_API_KEY loaded? {bool(os.getenv('OPENAI_API_KEY'))}")
 #os.environ["OPENAI_API_KEY"]
-os.getenv("OPENAI_API_KEY")
+#os.getenv("OPENAI_API_KEY")
 
 ENV = os.getenv("DATABRICKS_BUNDLE_TARGET", "dev")
 
