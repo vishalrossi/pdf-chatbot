@@ -1,5 +1,336 @@
 # model.py
 
+from __future__ import annotations
+
+import json
+import os
+from typing import Any, Dict, Iterable, List, Optional, Tuple
+
+import pandas as pd
+import mlflow
+from mlflow import pyfunc
+from mlflow.models.signature import ModelSignature
+from mlflow.types import DataType, Schema, ColSpec
+
+from databricks.vector_search.client import VectorSearchClient
+from openai import OpenAI
+
+
+class PDFRAGModel:
+    """
+    PDF Retrieval-Augmented Generation (RAG) model.
+
+    Responsibilities:
+    - Query a Databricks Vector Search index using precomputed embeddings
+    - Build a citation-aware context from retrieved chunks
+    - Generate grounded answers using OpenAI Chat Completions
+    - Optionally load country metadata at runtime
+    - Register the model in Databricks Model Registry via MLflow
+    """
+
+    # ------------------------------------------------------------------
+    # Initialization
+    # ------------------------------------------------------------------
+
+    def __init__(
+        self,
+        index_name: str,
+        endpoint_name: str,
+        *,
+        model_name: str = "gpt-4o-mini",
+        country_csv_path: Optional[str] = None,
+    ) -> None:
+        """
+        Initialize the PDF RAG model.
+
+        Args:
+            index_name: Fully qualified Databricks Vector Search index name.
+            endpoint_name: Vector Search endpoint name.
+            model_name: OpenAI chat model name.
+            country_csv_path: Optional path to CSV containing a 'Country' column.
+
+        Raises:
+            RuntimeError: If OPENAI_API_KEY is not set.
+        """
+        if not os.getenv("OPENAI_API_KEY"):
+            raise RuntimeError(
+                "OPENAI_API_KEY not set. "
+                "Set it via environment variable or .env file."
+            )
+
+        self.client = OpenAI()  # reads API key from environment
+        self.vsc = VectorSearchClient()
+
+        self.index_name = index_name
+        self.endpoint_name = endpoint_name
+        self.model_name = model_name
+
+        self.index = self.vsc.get_index(
+            endpoint_name=self.endpoint_name,
+            index_name=self.index_name,
+        )
+
+        self.COUNTRY_LIST: List[str] = (
+            self.load_country_list(country_csv_path)
+            if country_csv_path
+            else []
+        )
+
+    # ------------------------------------------------------------------
+    # Country helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def load_country_list(csv_path: str) -> List[str]:
+        """
+        Load country names from a CSV file.
+
+        Args:
+            csv_path: Path to CSV containing a 'Country' column.
+
+        Returns:
+            List of country names.
+        """
+        df = pd.read_csv(csv_path)
+        return df["Country"].dropna().tolist()
+
+    @staticmethod
+    def detect_country(
+        question: str,
+        countries: Iterable[str],
+    ) -> Optional[str]:
+        """
+        Detect whether a country is explicitly mentioned in the question.
+
+        Args:
+            question: User question.
+            countries: Iterable of known country names.
+
+        Returns:
+            Detected country name, or None.
+        """
+        question_lower = question.lower()
+        for country in countries:
+            if country.lower() in question_lower:
+                return country
+        return None
+
+    # ------------------------------------------------------------------
+    # Retrieval
+    # ------------------------------------------------------------------
+
+    def retrieve_context(
+        self,
+        query_embedding: List[float],
+        *,
+        k: int = 3,
+    ) -> List[str]:
+        """
+        Retrieve top-k text chunks from the vector index.
+
+        Args:
+            query_embedding: Precomputed embedding vector.
+            k: Number of chunks to retrieve.
+
+        Returns:
+            List of retrieved text chunks.
+        """
+        response = self.index.similarity_search(
+            query_vector=query_embedding,
+            columns=["text"],
+            num_results=k,
+        )
+
+        # Normalize Databricks response → List[str]
+        return [row[0] for row in response["result"]["data_array"]]
+
+    # ------------------------------------------------------------------
+    # Context construction
+    # ------------------------------------------------------------------
+
+    def build_cited_context(
+        self,
+        chunks: Iterable[str],
+        *,
+        country: Optional[str] = None,
+    ) -> Tuple[str, List[Dict[str, Any]]]:
+        """
+        Build an LLM-ready context string and citation metadata.
+
+        Args:
+            chunks: Retrieved text chunks.
+            country: Optional country name for line-level filtering.
+
+        Returns:
+            Tuple of:
+              - Combined context string
+              - List of citation dictionaries
+        """
+        context_lines: List[str] = []
+        citations: List[Dict[str, Any]] = []
+
+        for idx, chunk in enumerate(chunks, start=1):
+            text = str(chunk).strip()
+            if not text:
+                continue
+
+            relevant_lines: List[str] = []
+            for line in text.split("\n"):
+                line = line.strip()
+                if not line:
+                    continue
+
+                if country:
+                    if country.lower() in line.lower() or line.startswith("•"):
+                        relevant_lines.append(line)
+                else:
+                    relevant_lines.append(line)
+
+            if not relevant_lines:
+                continue
+
+            joined = "\n".join(relevant_lines)
+            context_lines.append(joined)
+            citations.append(
+                {
+                    "chunk_id": idx,
+                    "text": joined,
+                }
+            )
+
+        return "\n".join(context_lines), citations
+
+    # ------------------------------------------------------------------
+    # RAG inference
+    # ------------------------------------------------------------------
+
+    def ask_pdf(
+        self,
+        *,
+        query_embedding: List[float],
+        question: str,
+        k: int = 2,
+    ) -> Dict[str, Any]:
+        """
+        Perform retrieval-augmented QA over the PDF.
+
+        Args:
+            query_embedding: Precomputed embedding for the question.
+            question: User question.
+            k: Number of chunks to retrieve.
+
+        Returns:
+            Dictionary with:
+              - answer: LLM-generated answer
+              - citations: Chunk-level citations
+        """
+        country = self.detect_country(question, self.COUNTRY_LIST)
+        chunks = self.retrieve_context(query_embedding, k=k)
+        context, citations = self.build_cited_context(chunks, country=country)
+
+        system_prompt = (
+            "You are a helpful assistant that answers questions using ONLY the provided context.\n"
+            "The context may contain countries and lists of dog breeds.\n"
+            "If the country is in the context, list all breeds in a natural sentence.\n"
+            "If the country is not found, respond exactly:\n"
+            "'I could not find this information in the provided document, so I can't answer.'\n"
+            "Always preserve chunk-level citations."
+        )
+
+        user_prompt = f"""
+Context:
+{context}
+
+Question:
+{question}
+
+Answer:
+"""
+
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0,
+        )
+
+        return {
+            "answer": response.choices[0].message.content.strip(),
+            "citations": citations,
+        }
+
+    # ------------------------------------------------------------------
+    # MLflow registration
+    # ------------------------------------------------------------------
+
+    def register_model(
+        self,
+        model_name: str,
+        *,
+        experiment_name: str = "/Shared/pdf_rag_experiment",
+    ) -> None:
+        """
+        Register this PDF RAG model in Databricks Model Registry.
+
+        Args:
+            model_name: Name of the registered MLflow model.
+            experiment_name: MLflow experiment path.
+        """
+        pdf_rag_instance = self
+
+        class PDFRAGWrapper(pyfunc.PythonModel):
+            def load_context(self, context):
+                self.model = pdf_rag_instance
+
+            def predict(self, context, model_input):
+                embedding = json.loads(model_input["query_embedding"])
+                result = self.model.ask_pdf(
+                    query_embedding=embedding,
+                    question=model_input["question"],
+                )
+
+                return {
+                    "answer": result["answer"],
+                    "citations": json.dumps(result.get("citations", [])),
+                }
+
+        if mlflow.get_experiment_by_name(experiment_name) is None:
+            mlflow.create_experiment(experiment_name)
+        mlflow.set_experiment(experiment_name)
+
+        signature = ModelSignature(
+            inputs=Schema(
+                [
+                    ColSpec(DataType.string, "question"),
+                    ColSpec(DataType.string, "query_embedding"),
+                ]
+            ),
+            outputs=Schema(
+                [
+                    ColSpec(DataType.string, "answer"),
+                    ColSpec(DataType.string, "citations"),
+                ]
+            ),
+        )
+
+        mlflow.pyfunc.log_model(
+            python_model=PDFRAGWrapper(),
+            artifact_path=f"{model_name}_pyfunc",
+            registered_model_name=model_name,
+            signature=signature,
+        )
+
+        print(
+            f"Model '{model_name}' registered successfully "
+            "in Databricks Model Registry"
+        )
+
+
+
+
+'''
 from databricks.vector_search.client import VectorSearchClient
 from openai import OpenAI
 import mlflow
@@ -8,6 +339,7 @@ from mlflow.models.signature import ModelSignature
 from mlflow.types import DataType, Schema, ColSpec
 import json
 import os
+import pandas as pd
 
 class PDFRAGModel:
     """
@@ -18,6 +350,12 @@ class PDFRAGModel:
     - Optional: register model in Databricks Model Registry
     """
     
+    input_countries_path = "/Volumes/databricks_vishal/chatbot/rag_data/pdf/extracted_countries.csv"
+    input_counties_df = pd.read_csv(input_countries_path)
+
+    COUNTRY_LIST = input_counties_df["Country"].dropna().tolist()
+    
+    '''
     # List of countries appearing in your PDF
     COUNTRY_LIST = [
         "Australia", "Brazil", "Canada", "China", "Czech Republic",
@@ -26,6 +364,7 @@ class PDFRAGModel:
         "South Africa", "Spain", "Sweden", "Thailand", "Turkey", 
         "United Kingdom", "United States", "Zimbabwe"
         ]
+    '''
     
     def __init__(self, index_name, endpoint_name, model_name= "gpt-4o-mini"):
         if not os.getenv("OPENAI_API_KEY"):
@@ -231,3 +570,4 @@ class PDFRAGModel:
         )
 
         print(f"Model '{model_name}' registered successfully in Databricks Model Registry")
+'''
