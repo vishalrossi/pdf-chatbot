@@ -48,8 +48,10 @@ def load_environment() -> None:
     """
 
     # Resolve project root safely for Streamlit
-    if "__file__" in globals():
-        project_root = Path(__file__).resolve().parents[1]
+    file_path = globals().get("__file__")
+
+    if isinstance(file_path, str):
+        project_root = Path(file_path).resolve().parents[1]
         source = "__file__"
     else:
         project_root = Path(os.getcwd()).resolve()
