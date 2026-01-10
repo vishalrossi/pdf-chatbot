@@ -183,12 +183,14 @@ def create_or_sync_index_safe(client: VectorSearchClient, endpoint_name: str, in
 
     Args:
         client: VectorSearchClient instance.
-        endpoint_name: Endpoint name.
+        endpoint_name: Name of the endpoint.
         index_name: Fully qualified index name.
-        source_table_name: Delta table source.
+        source_table_name: Delta table to index.
         embeddings: List of embeddings (2D list).
     """
-    existing_indexes = [i["name"] for i in client.list_indexes().get("indexes", [])]
+    # Provide endpoint_name explicitly
+    existing_indexes = [i["name"] for i in client.list_indexes(endpoint_name=endpoint_name).get("indexes", [])]
+
     if index_name in existing_indexes:
         print(f"Index '{index_name}' already exists. Skipping creation.")
         return
