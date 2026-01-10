@@ -36,7 +36,7 @@ def load_environment() -> None:
 
 load_environment()
 
-API_KEY = os.environ.get("OPENAI_API_KEY")
+api_key = os.environ.get("OPENAI_API_KEY")
 
 if not os.getenv("OPENAI_API_KEY"):
     st.error("OPENAI_API_KEY is not set")
