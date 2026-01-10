@@ -25,13 +25,20 @@ def load_environment() -> None:
     """
     Load environment variables from .env at project root.
     """
-    if "__file__" in globals():
-        project_root = Path(__file__).resolve().parents[1]
-    else:
+    try:
+        if "__file__" in globals():
+            project_root = Path(__file__).resolve().parents[1]
+        else:
+            project_root = Path(os.getcwd()).resolve()
+    except Exception:
         project_root = Path(os.getcwd()).resolve()
 
     env_path = project_root / ".env"
-    load_dotenv(dotenv_path=env_path)
+
+    if not env_path.exists():
+        st.warning(f".env file not found at {env_path}")
+    else:
+        load_dotenv(dotenv_path=str(env_path), override=True)
     
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
