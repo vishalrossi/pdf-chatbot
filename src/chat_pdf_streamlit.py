@@ -36,7 +36,7 @@ def load_environment() -> None:
 
 load_environment()
 
-API_KEY = os.environ.get("OPENAI_API_KEY")
+#API_KEY = os.environ.get("OPENAI_API_KEY")
 
 if not os.getenv("OPENAI_API_KEY"):
     st.error("OPENAI_API_KEY is not set")
@@ -84,7 +84,7 @@ def get_pdf_rag_model() -> PDFRAGModel:
         model_name=RAG_MODEL_NAME,
     )
 
-
+API_KEY = os.environ.get("OPENAI_API_KEY")
 embeddings = get_embeddings()
 pdf_model = get_pdf_rag_model()
 
