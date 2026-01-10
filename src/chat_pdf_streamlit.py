@@ -37,36 +37,7 @@ def load_environment(env_path: str) -> None:
 
     # CRITICAL: make it explicit
     os.environ["OPENAI_API_KEY"] = api_key
-    
-    
-'''
-def load_environment() -> None:
-    """
-    Load environment variables from .env at project root.
-    """
-    try:
-        if "__file__" in globals():
-            project_root = Path(__file__).resolve().parents[1]
-        else:
-            project_root = Path(os.getcwd()).resolve()
-    except Exception:
-        project_root = Path(os.getcwd()).resolve()
 
-    env_path = project_root / ".env"
-
-    if not env_path.exists():
-        st.warning(f".env file not found at {env_path}")
-    else:
-        load_dotenv(dotenv_path=str(env_path), override=True)
-    
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        st.error("OPENAI_API_KEY is not set")
-        st.stop()
-
-    # CRITICAL: make it explicit
-    os.environ["OPENAI_API_KEY"] = api_key
-'''
 
 load_environment(env_path="/Workspace/vishal/pdf-chatbot/.env")
 
@@ -118,7 +89,7 @@ def get_pdf_rag_model() -> PDFRAGModel:
         model_name=RAG_MODEL_NAME,
     )
 
-api_key = os.environ.get("OPENAI_API_KEY")
+#api_key = os.environ.get("OPENAI_API_KEY")
 embeddings = get_embeddings()
 pdf_model = get_pdf_rag_model()
 
