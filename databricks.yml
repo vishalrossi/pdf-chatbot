@@ -96,7 +96,7 @@ resources:
           spark_python_task:
             python_file: src/get_names.py
 
-        - task_key: rag and register_model
+        - task_key: rag-register_model
           depends_on:
             - task_key: get_country_names
           job_cluster_key: pipeline_cluster
