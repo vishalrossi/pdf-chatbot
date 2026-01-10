@@ -50,24 +50,34 @@ load_environment(env_path="/Workspace/vishal/pdf-chatbot/.env")
 
 def load_environment() -> None:
     """
-    Load OPENAI_API_KEY safely for Streamlit.
+    Load OPENAI_API_KEY for Streamlit using cwd-based resolution.
     """
 
-    # Explicit path — works in Databricks + Streamlit
-    env_path = ".env"
+    cwd = os.getcwd()
+    st.write("DEBUG: cwd =", cwd)
+
+    # Move up from /files/src → project root
+    project_root = os.path.dirname(os.path.dirname(cwd))
+    env_path = os.path.join(project_root, ".env")
+
+    st.write("DEBUG: project_root =", project_root)
+    st.write("DEBUG: .env path =", env_path)
+    st.write("DEBUG: .env exists =", os.path.exists(env_path))
 
     if not os.path.exists(env_path):
         st.error(f".env file not found at {env_path}")
         st.stop()
 
-    from dotenv import load_dotenv
     load_dotenv(env_path, override=True)
 
     api_key = os.getenv("OPENAI_API_KEY")
+    st.write("DEBUG: OPENAI_API_KEY loaded =", bool(api_key))
+
     if not api_key:
-        st.error("OPENAI_API_KEY is not set")
+        st.error("OPENAI_API_KEY is not set in .env")
         st.stop()
 
+    # Ensure cached resources can access it
     os.environ["OPENAI_API_KEY"] = api_key
 
 
