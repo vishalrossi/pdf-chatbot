@@ -35,7 +35,7 @@ Databricks Workspace
     └── chatbot
         ├── src/
         │   ├── ingest_pdf.py
-        │   ├── get_names.py.py
+        │   ├── get_names.py
         │   ├── model.py
         │   ├── register_model.py
         │   ├── evaluate.py
